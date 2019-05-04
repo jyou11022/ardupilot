@@ -27,6 +27,7 @@ public:
         LOITER       = 5,
         FOLLOW       = 6,
         SIMPLE       = 7,
+        DROPHOLD     = 8,
         AUTO         = 10,
         RTL          = 11,
         SMART_RTL    = 12,
@@ -627,3 +628,10 @@ private:
     float _desired_heading_cd;  // latest desired heading (in centi-degrees) from pilot
 };
 
+
+class ModeDropHold : public Mode
+{
+public:
+
+    uint32_t mode_number() const override { return DROPHOLD; }
+    const char *name4() const override { return "DPOPHOLD"; }
