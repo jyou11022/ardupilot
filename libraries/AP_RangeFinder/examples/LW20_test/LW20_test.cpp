@@ -45,11 +45,18 @@ void loop()
         if (!sensor->has_data()) {
             continue;
         }
+<<<<<<< HEAD
         hal.console->printf("All: device_%u type %d scaling %d offset %d status %d distance_cm %d\n",
                             i,
                             (int)sensor->type(),
                             (int)sensor->status(),
                             (int)sensor->status(),
+=======
+        hal.console->printf("All: device_%u type %d status %d distance_cm %d\n",
+                            i,
+                            (int)sensor->type(),
+                            (int)sensor->status(),
+>>>>>>> Tuning Param Added
                             sensor->distance_cm());
         had_data = true;
     }
