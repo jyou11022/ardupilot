@@ -101,6 +101,32 @@ void AP_RangeFinder_LightWareI2C::update(void)
 void AP_RangeFinder_LightWareI2C::timer(void)
 {
     if (get_reading(state.distance_cm)) {
+        float scaling = params.scaling;
+        float offset = params.offset;
+        float dist_cm = state.distance_cm;
+        RangeFinder::RangeFinder_Function function = (RangeFinder::RangeFinder_Function)params.function.get();
+
+        switch (function) {
+        case RangeFinder::FUNCTION_LINEAR:
+            dist_cm = (dist_cm - offset) * scaling;
+            break;
+    
+        case RangeFinder::FUNCTION_INVERTED:
+            dist_cm = (offset - dist_cm) * scaling;
+            break;
+
+        case RangeFinder::FUNCTION_HYPERBOLA:
+            if (dist_cm <= offset) {
+                dist_cm = 0;
+            } else {
+                dist_cm = scaling / (dist_cm - offset);
+            }
+            break;
+        }
+        if (dist_cm < 0) {
+            dist_cm = 0;
+        }
+        state.distance_cm = dist_cm;
         state.last_reading_ms = AP_HAL::millis();
         // update range_valid state based on distance measured
         update_status();
