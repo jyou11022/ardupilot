@@ -119,8 +119,34 @@ bool AP_RangeFinder_LightWareSerial::get_reading(uint16_t &reading_cm)
 void AP_RangeFinder_LightWareSerial::update(void)
 {
     if (get_reading(state.distance_cm)) {
-        // update range_valid state based on distance measured
+        float scaling = params.scaling;
+        float offset = params.offset;
+        float dist_cm = state.distance_cm;
+        RangeFinder::RangeFinder_Function function = (RangeFinder::RangeFinder_Function)params.function.get();
+
+        switch (function) {
+        case RangeFinder::FUNCTION_LINEAR:
+            dist_cm = (dist_cm - offset) * scaling;
+            break;
+    
+        case RangeFinder::FUNCTION_INVERTED:
+            dist_cm = (offset - dist_cm) * scaling;
+            break;
+
+        case RangeFinder::FUNCTION_HYPERBOLA:
+            if (dist_cm <= offset) {
+                dist_cm = 0;
+            } else {
+                dist_cm = scaling / (dist_cm - offset);
+            }
+            break;
+        }
+        if (dist_cm < 0) {
+            dist_cm = 0;
+        }
+        state.distance_cm = dist_cm;
         state.last_reading_ms = AP_HAL::millis();
+        // update range_valid state based on distance measured
         update_status();
     } else if (AP_HAL::millis() - state.last_reading_ms > 200) {
         set_status(RangeFinder::RangeFinder_NoData);
