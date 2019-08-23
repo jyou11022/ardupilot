@@ -83,12 +83,20 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_ADDR", 5,  OpticalFlow, _address,   0),
 
-    // the parameter description below is for GCSs (like MP) that use master for the parameter descriptions.  This should be removed when Copter-3.7 is released
-    // @Param: _ENABLE
-    // @DisplayName: Optical flow enable/disable
-    // @Description: Setting this to Enabled(1) will enable optical flow. Setting this to Disabled(0) will disable optical flow
+    // @Param: _ADDITIONAL
+    // @DisplayName: Optical flow additional sensors
+    // @Description: This indicates the number of additional optical flow sensors. Setting this to Disabled(0) will disable additional optical flow.
     // @Values: 0:Disabled, 1:Enabled
     // @User: Standard
+    AP_GROUPINFO("_EXTRA", 6,  OpticalFlow,    _extra, 0),
+
+    // @Param: _ORIENT_TILT
+    // @DisplayName: Flow sensor tilt alignment
+    // @Description: Specifies the number of centi-degrees that the additional flow sensors is tiled relative to the vertical axis of the vehicle.
+    // @Range: 0 +9000
+    // @Increment: 1
+    // @User: Standard
+    AP_GROUPINFO("_ORIENT_TILT", 7,  OpticalFlow,    _tiltAngle_cd,   0),
 
     AP_GROUPEND
 };
