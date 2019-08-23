@@ -18,7 +18,7 @@ extern const AP_HAL::HAL& hal;
 //UAVCAN Frontend Registry Binder
 UC_REGISTRY_BINDER(MeasurementCb, com::hex::equipment::flow::Measurement);
 
-uint8_t AP_OpticalFlow_HereFlow::_node_id = 0;
+//uint8_t AP_OpticalFlow_HereFlow::_node_id = 0;
 
 
 
@@ -27,7 +27,7 @@ AP_UAVCAN* AP_OpticalFlow_HereFlow::_ap_uavcan = nullptr;
 /*
   constructor - registers instance at top Flow driver
  */
-AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t instance) :
+AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t &instance) :
 
     OpticalFlow_backend(flow)
 {
@@ -35,7 +35,7 @@ AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t inst
         AP_HAL::panic("Only one instance of Flow supported!");
     }
     _driver = this;
-    _node_id = instance;
+    _driver->_node_id = instance;
 }
 
 //links the HereFlow messages to the backend
@@ -67,10 +67,10 @@ void AP_OpticalFlow_HereFlow::handle_measurement(AP_UAVCAN* ap_uavcan, uint8_t n
     //as we only handle one Here Flow at a time as of now
     if (_ap_uavcan == nullptr) {
         _ap_uavcan = ap_uavcan;
-        _node_id = node_id;
+        _driver->_node_id = node_id;
     }
 
-    if (_ap_uavcan == ap_uavcan && _node_id == node_id) {
+    if (_ap_uavcan == ap_uavcan && _driver->_node_id == node_id) {
         WITH_SEMAPHORE(_driver->_sem);
         _driver->new_data = true;
         _driver->flowRate = Vector2f(cb.msg->flow_integral[0], cb.msg->flow_integral[1]);
@@ -106,7 +106,7 @@ void AP_OpticalFlow_HereFlow::_push_state(void)
     _applyYaw(state.flowRate);
     _applyYaw(state.bodyRate);
     // hal.console->printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
-    _update_frontend(state);
+    _update_frontend2(state,_node_id);
     new_data = false;
 }
 

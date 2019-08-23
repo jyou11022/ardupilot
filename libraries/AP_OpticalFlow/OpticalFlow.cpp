@@ -192,7 +192,9 @@ void OpticalFlow::handle_msg(const mavlink_message_t &msg)
     }
 }
 
-void OpticalFlow::update_state(const OpticalFlow_state &state, uint8_t instance)
+void OpticalFlow::update_state(const OpticalFlow_state &state)
+{}
+void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance)
 {
     _state[instance] = state;
     _last_update_ms = AP_HAL::millis();

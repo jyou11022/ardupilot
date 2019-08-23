@@ -44,6 +44,7 @@ protected:
 
     // update the frontend
     void _update_frontend(const struct OpticalFlow::OpticalFlow_state &state);
+    void _update_frontend2(const struct OpticalFlow::OpticalFlow_state &state, uint8_t &instance);
 
     // get the flow scaling parameters
     Vector2f _flowScaler(void) const { return Vector2f(frontend._flowScalerX, frontend._flowScalerY); }
