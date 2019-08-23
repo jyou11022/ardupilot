@@ -31,6 +31,8 @@ class AP_AHRS_NavEKF;
 class OpticalFlow
 {
     friend class OpticalFlow_backend;
+    //UAVCAN drivers are initialised in the Backend, hence list of drivers is needed there.
+    friend class AP_OpticalFlow_HereFlow;
 
 public:
     OpticalFlow();

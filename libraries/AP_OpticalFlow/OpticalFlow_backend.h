@@ -52,6 +52,10 @@ protected:
     // get the yaw angle in radians
     float _yawAngleRad(void) const { return radians(float(frontend._yawAngle_cd) * 0.01f); }
 
+    // get the tilt angle in radians
+    float _tiltAngleRad(void) const { return radians(float(frontend._tiltAngle_cd) * 0.01f); }
+
+
     // apply yaw angle to a vector
     void _applyYaw(Vector2f &v);
 
