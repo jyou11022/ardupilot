@@ -23,6 +23,8 @@
 #include <AP_Math/AP_Math.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 
+#define OPTICALFLOW_MAX_INSTANCES 10
+
 class OpticalFlow_backend;
 class AP_AHRS_NavEKF;
 
@@ -98,7 +100,7 @@ private:
 
     static OpticalFlow *_singleton;
 
-    OpticalFlow_backend *backend;
+    OpticalFlow_backend *backend[OPTICALFLOW_MAX_INSTANCES];
 
     struct AP_OpticalFlow_Flags {
         uint8_t healthy     : 1;    // true if sensor is healthy
@@ -112,15 +114,16 @@ private:
     AP_Vector3f _pos_offset;        // position offset of the flow sensor in the body frame
     AP_Int8  _address;              // address on the bus (allows selecting between 8 possible I2C addresses for px4flow)
     AP_Int8  _extra;                // number of extra OF sensors
-    AP_Int8  _tiltAngle_cd          // tilt angle of the extra OF sensors
+    AP_Int16  _tiltAngle_cd;          // tilt angle of the extra OF sensors
 
     // method called by backend to update frontend state:
     void update_state(const OpticalFlow_state &state);
 
     // state filled in by backend
-    struct OpticalFlow_state _state;
+    struct OpticalFlow_state _state[OPTICALFLOW_MAX_INSTANCES];
 
     uint32_t _last_update_ms;        // millis() time of last update
+    uint8_t num_instances;           // number of sensors
 
     void Log_Write_Optflow();
     uint32_t _log_bit = -1;     // bitmask bit which indicates if we should log.  -1 means we always log

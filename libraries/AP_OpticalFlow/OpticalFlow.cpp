@@ -112,49 +112,53 @@ OpticalFlow::OpticalFlow()
 void OpticalFlow::init(uint32_t log_bit)
 {
      _log_bit = log_bit;
+     num_instances = _extra+1;
 
     // return immediately if not enabled or backend already created
     if ((_type == (int8_t)OpticalFlowType::NONE) || (backend != nullptr)) {
         return;
     }
 
-    switch ((OpticalFlowType)_type.get()) {
-    case OpticalFlowType::NONE:
-        break;
-    case OpticalFlowType::PX4FLOW:
-        backend = AP_OpticalFlow_PX4Flow::detect(*this);
-        break;
-    case OpticalFlowType::PIXART:
-        backend = AP_OpticalFlow_Pixart::detect("pixartflow", *this);
-        if (backend == nullptr) {
-            backend = AP_OpticalFlow_Pixart::detect("pixartPC15", *this);
-        }
-        break;
-    case OpticalFlowType::BEBOP:
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
-        backend = new AP_OpticalFlow_Onboard(*this);
-#endif
-        break;
-    case OpticalFlowType::CXOF:
-        backend = AP_OpticalFlow_CXOF::detect(*this);
-        break;
-    case OpticalFlowType::MAVLINK:
-        backend = AP_OpticalFlow_MAV::detect(*this);
-        break;
-    case OpticalFlowType::UAVCAN:
-#if HAL_WITH_UAVCAN
-        backend = new AP_OpticalFlow_HereFlow(*this);
-#endif
-        break;
-    case OpticalFlowType::SITL:
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-        backend = new AP_OpticalFlow_SITL(*this);
-#endif
-        break;
-    }
+    for (uint8_t i = 0; i<num_instances; i++) {
 
-    if (backend != nullptr) {
-        backend->init();
+        switch ((OpticalFlowType)_type.get()) {
+        case OpticalFlowType::NONE:
+            break;
+        case OpticalFlowType::PX4FLOW:
+            backend[i] = AP_OpticalFlow_PX4Flow::detect(*this);
+            break;
+        case OpticalFlowType::PIXART:
+            backend[i] = AP_OpticalFlow_Pixart::detect("pixartflow", *this);
+            if (backend == nullptr) {
+                backend[i] = AP_OpticalFlow_Pixart::detect("pixartPC15", *this);
+            }
+            break;
+        case OpticalFlowType::BEBOP:
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
+            backend[i] = new AP_OpticalFlow_Onboard(*this);
+#endif
+            break;
+        case OpticalFlowType::CXOF:
+            backend[i] = AP_OpticalFlow_CXOF::detect(*this);
+            break;
+        case OpticalFlowType::MAVLINK:
+            backend[i] = AP_OpticalFlow_MAV::detect(*this);
+            break;
+        case OpticalFlowType::UAVCAN:
+#if HAL_WITH_UAVCAN
+            backend[i] = new AP_OpticalFlow_HereFlow(*this, i);
+#endif
+            break;
+        case OpticalFlowType::SITL:
+    #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+            backend[i] = new AP_OpticalFlow_SITL(*this);
+    #endif
+            break;
+        }
+
+        if (backend != nullptr) {
+            backend[i]->init();
+        }
     }
 }
 
@@ -164,12 +168,14 @@ void OpticalFlow::update(void)
     if (!enabled()) {
         return;
     }
-    if (backend != nullptr) {
-        backend->update();
-    }
 
+    for (uint8_t i = 0; i<num_instances; i++) {
+        if (backend[i] != nullptr) {
+            backend[i]->update();
+        }
+    }
     // only healthy if the data is less than 0.5s old
-    _flags.healthy = (AP_HAL::millis() - _last_update_ms < 500);
+    _flags.healthy = (AP_HAL::millis() - _last_update_ms < 500*num_instances);
 }
 
 void OpticalFlow::handle_msg(const mavlink_message_t &msg)
@@ -179,26 +185,32 @@ void OpticalFlow::handle_msg(const mavlink_message_t &msg)
         return;
     }
 
-    if (backend != nullptr) {
-        backend->handle_msg(msg);
+    for (uint8_t i = 0; i<num_instances; i++) {
+        if (backend[i] != nullptr) {
+            backend[i]->handle_msg(msg);
+        }
     }
 }
 
-void OpticalFlow::update_state(const OpticalFlow_state &state)
+void OpticalFlow::update_state(const OpticalFlow_state &state, uint8_t instance)
 {
-    _state = state;
+    _state[instance] = state;
     _last_update_ms = AP_HAL::millis();
 
-    // write to log and send to EKF if new data has arrived
-    AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                       _state.flowRate,
-                                       _state.bodyRate,
-                                       _last_update_ms,
-                                       get_pos_offset());
-    Log_Write_Optflow();
+    //Test Loop
+    if (instance == 1) { 
+
+        // write to log and send to EKF if new data has arrived
+        AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                           _state[instance].flowRate,
+                                           _state[instance].bodyRate,
+                                           _last_update_ms,
+                                           get_pos_offset());
+        Log_Write_Optflow(instance);
+    }
 }
 
-void OpticalFlow::Log_Write_Optflow()
+void OpticalFlow::Log_Write_Optflow(uint8_t instance)
 {
     AP_Logger *logger = AP_Logger::get_singleton();
     if (logger == nullptr) {
@@ -212,11 +224,11 @@ void OpticalFlow::Log_Write_Optflow()
     struct log_Optflow pkt = {
         LOG_PACKET_HEADER_INIT(LOG_OPTFLOW_MSG),
         time_us         : AP_HAL::micros64(),
-        surface_quality : _state.surface_quality,
-        flow_x          : _state.flowRate.x,
-        flow_y          : _state.flowRate.y,
-        body_x          : _state.bodyRate.x,
-        body_y          : _state.bodyRate.y
+        surface_quality : _state[instance].surface_quality,
+        flow_x          : _state[instance].flowRate.x,
+        flow_y          : _state[instance].flowRate.y,
+        body_x          : _state[instance].bodyRate.x,
+        body_y          : _state[instance].bodyRate.y
     };
     logger->WriteBlock(&pkt, sizeof(pkt));
 }
