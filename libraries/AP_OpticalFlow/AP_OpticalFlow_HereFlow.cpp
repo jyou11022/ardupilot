@@ -22,8 +22,9 @@ UC_REGISTRY_BINDER(MeasurementCb, com::hex::equipment::flow::Measurement);
 
 
 
-AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::_driver = nullptr;
-AP_UAVCAN* AP_OpticalFlow_HereFlow::_ap_uavcan = nullptr;
+// AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::_driver = nullptr;
+// AP_UAVCAN* AP_OpticalFlow_HereFlow::_ap_uavcan = nullptr;
+
 /*
   constructor - registers instance at top Flow driver
  */
@@ -31,12 +32,41 @@ AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t &ins
 
     OpticalFlow_backend(flow)
 {
-    if (_driver) {
-        AP_HAL::panic("Only one instance of Flow supported!");
-    }
-    _driver = this;
-    _driver->_node_id = instance;
+    this->_node_id = instance;
+//     if (_driver) {
+//         AP_HAL::panic("Only one instance of Flow supported!");
+//     }
+//     _driver = this;
+//     _driver->_node_id = instance;
 }
+
+//Method to find the backend relating to the node id
+AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::get_uavcan_backend(AP_UAVCAN* ap_uavcan, uint8_t &node_id)
+{
+    if (ap_uavcan == nullptr) {
+        return nullptr;
+    }
+    AP_OpticalFlow_HereFlow* driver = nullptr;
+    // for (uint8_t i = 0; i < OPTICALFLOW_MAX_INSTANCES; i++) {
+    //     if (AP::OpticalFlow()._type == OpticalFlowType::UAVCAN) {
+    driver = (AP_OpticalFlow_HereFlow*)AP::opticalflow()->backend[node_id];
+
+    //Double check if the driver was initialised as UAVCAN Type
+    if (driver != nullptr) {
+        if (driver->_ap_uavcan == ap_uavcan && 
+            driver->_node_id == node_id) {
+            return driver;
+        } else {
+            //we found a possible duplicate addressed sensor
+            //we return nothing in such scenario
+            return nullptr;
+        }
+    }
+
+    return driver;
+}
+
+
 
 //links the HereFlow messages to the backend
 void AP_OpticalFlow_HereFlow::subscribe_msgs(AP_UAVCAN* ap_uavcan)
@@ -60,23 +90,29 @@ void AP_OpticalFlow_HereFlow::subscribe_msgs(AP_UAVCAN* ap_uavcan)
 //updates driver states based on received HereFlow messages
 void AP_OpticalFlow_HereFlow::handle_measurement(AP_UAVCAN* ap_uavcan, uint8_t node_id, const MeasurementCb &cb)
 {
-    if (_driver == nullptr) {
+    //fetch the matching uavcan driver, node id and sensor id backend instance
+    AP_OpticalFlow_HereFlow* driver = get_uavcan_backend(ap_uavcan, node_id);
+    if (driver == nullptr) {
         return;
     }
+
+    // if (_driver == nullptr) {
+    //     return;
+    // }
     //protect from data coming from duplicate sensors,
     //as we only handle one Here Flow at a time as of now
-    if (_ap_uavcan == nullptr) {
-        _ap_uavcan = ap_uavcan;
-        _driver->_node_id = node_id;
+    if (driver->_ap_uavcan == nullptr) {
+        driver->_ap_uavcan = ap_uavcan;
+        driver->_node_id = node_id;
     }
 
-    if (_ap_uavcan == ap_uavcan && _driver->_node_id == node_id) {
-        WITH_SEMAPHORE(_driver->_sem);
-        _driver->new_data = true;
-        _driver->flowRate = Vector2f(cb.msg->flow_integral[0], cb.msg->flow_integral[1]);
-        _driver->bodyRate = Vector2f(cb.msg->rate_gyro_integral[0], cb.msg->rate_gyro_integral[1]);
-        _driver->integral_time = cb.msg->integration_interval;
-        _driver->surface_quality = cb.msg->quality;
+    if (driver->_ap_uavcan == ap_uavcan && driver->_node_id == node_id) {
+        WITH_SEMAPHORE(driver->_sem);
+        driver->new_data = true;
+        driver->flowRate = Vector2f(cb.msg->flow_integral[0], cb.msg->flow_integral[1]);
+        driver->bodyRate = Vector2f(cb.msg->rate_gyro_integral[0], cb.msg->rate_gyro_integral[1]);
+        driver->integral_time = cb.msg->integration_interval;
+        driver->surface_quality = cb.msg->quality;
     }
 }
 

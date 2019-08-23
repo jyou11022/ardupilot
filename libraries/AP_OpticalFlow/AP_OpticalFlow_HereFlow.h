@@ -19,6 +19,8 @@ public:
 
     static void handle_measurement(AP_UAVCAN* ap_uavcan, uint8_t node_id, const MeasurementCb &cb);
 
+    static AP_OpticalFlow_HereFlow* get_uavcan_backend(AP_UAVCAN* ap_uavcan, uint8_t &node_id);
+
 private:
 
     Vector2f flowRate, bodyRate;
@@ -28,8 +30,8 @@ private:
 
     uint8_t _node_id;
 
-    static AP_OpticalFlow_HereFlow* _driver;
-    static AP_UAVCAN* _ap_uavcan;
+    AP_OpticalFlow_HereFlow* _driver;
+    AP_UAVCAN* _ap_uavcan;
     void _push_state(void);
 
 };
