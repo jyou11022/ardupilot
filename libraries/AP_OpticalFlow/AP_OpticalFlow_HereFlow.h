@@ -9,7 +9,7 @@ class MeasurementCb;
 
 class AP_OpticalFlow_HereFlow : public OpticalFlow_backend {
 public:
-    AP_OpticalFlow_HereFlow(OpticalFlow &flow);
+    AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t &instance);
 
     void init() override {}
 
@@ -25,11 +25,11 @@ private:
     uint8_t surface_quality;
     float integral_time;
     bool new_data;
-    
+
     uint8_t _node_id;
 
-    AP_OpticalFlow_HereFlow* _driver;
-    AP_UAVCAN* _ap_uavcan;
+    static AP_OpticalFlow_HereFlow* _driver;
+    static AP_UAVCAN* _ap_uavcan;
     void _push_state(void);
 
 };

@@ -31,6 +31,10 @@ void OpticalFlow_backend::_update_frontend(const struct OpticalFlow::OpticalFlow
 {
     frontend.update_state(state);
 }
+void OpticalFlow_backend::_update_frontend2(const struct OpticalFlow::OpticalFlow_state &state, uint8_t &instance)
+{
+    frontend.update_state2(state, instance);
+}
 
 // apply yaw angle to a vector
 void OpticalFlow_backend::_applyYaw(Vector2f &v)
