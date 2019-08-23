@@ -13,22 +13,29 @@ extern const AP_HAL::HAL& hal;
 
 #define debug_flow_uavcan(level_debug, can_driver, fmt, args...) do { if ((level_debug) <= AP::can().get_debug_level_driver(can_driver)) { hal.console->printf(fmt, ##args); }} while (0)
 
+
+
 //UAVCAN Frontend Registry Binder
 UC_REGISTRY_BINDER(MeasurementCb, com::hex::equipment::flow::Measurement);
 
 uint8_t AP_OpticalFlow_HereFlow::_node_id = 0;
+
+
+
 AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::_driver = nullptr;
 AP_UAVCAN* AP_OpticalFlow_HereFlow::_ap_uavcan = nullptr;
 /*
   constructor - registers instance at top Flow driver
  */
-AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow) :
+AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t instance) :
+
     OpticalFlow_backend(flow)
 {
     if (_driver) {
         AP_HAL::panic("Only one instance of Flow supported!");
     }
     _driver = this;
+    _node_id = instance;
 }
 
 //links the HereFlow messages to the backend

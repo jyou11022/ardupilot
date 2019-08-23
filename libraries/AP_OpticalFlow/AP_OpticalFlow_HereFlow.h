@@ -25,10 +25,11 @@ private:
     uint8_t surface_quality;
     float integral_time;
     bool new_data;
-    static uint8_t _node_id;
+    
+    uint8_t _node_id;
 
-    static AP_OpticalFlow_HereFlow* _driver;
-    static AP_UAVCAN* _ap_uavcan;
+    AP_OpticalFlow_HereFlow* _driver;
+    AP_UAVCAN* _ap_uavcan;
     void _push_state(void);
 
 };
