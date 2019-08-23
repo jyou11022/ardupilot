@@ -44,12 +44,17 @@ protected:
 
     // update the frontend
     void _update_frontend(const struct OpticalFlow::OpticalFlow_state &state);
+    void _update_frontend2(const struct OpticalFlow::OpticalFlow_state &state, uint8_t &instance);
 
     // get the flow scaling parameters
     Vector2f _flowScaler(void) const { return Vector2f(frontend._flowScalerX, frontend._flowScalerY); }
 
     // get the yaw angle in radians
     float _yawAngleRad(void) const { return radians(float(frontend._yawAngle_cd) * 0.01f); }
+
+    // get the tilt angle in radians
+    float _tiltAngleRad(void) const { return radians(float(frontend._tiltAngle_cd) * 0.01f); }
+
 
     // apply yaw angle to a vector
     void _applyYaw(Vector2f &v);

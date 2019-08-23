@@ -23,12 +23,16 @@
 #include <AP_Math/AP_Math.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 
+#define OPTICALFLOW_MAX_INSTANCES 10
+
 class OpticalFlow_backend;
 class AP_AHRS_NavEKF;
 
 class OpticalFlow
 {
     friend class OpticalFlow_backend;
+    //UAVCAN drivers are initialised in the Backend, hence list of drivers is needed there.
+    friend class AP_OpticalFlow_HereFlow;
 
 public:
     OpticalFlow();
@@ -60,7 +64,7 @@ public:
     bool enabled() const { return _type != (int8_t)OpticalFlowType::NONE; }
 
     // healthy - return true if the sensor is healthy
-    bool healthy() const { return backend != nullptr && _flags.healthy; }
+    bool healthy() const { return backend[0] != nullptr && _flags.healthy; }
 
     // read latest values from sensor and fill in x,y and totals.
     void update(void);
@@ -69,13 +73,13 @@ public:
     void handle_msg(const mavlink_message_t &msg);
 
     // quality - returns the surface quality as a measure from 0 ~ 255
-    uint8_t quality() const { return _state.surface_quality; }
+    uint8_t quality() const { return _state[0].surface_quality; }
 
     // raw - returns the raw movement from the sensor
-    const Vector2f& flowRate() const { return _state.flowRate; }
+    const Vector2f& flowRate() const { return _state[0].flowRate; }
 
     // velocity - returns the velocity in m/s
-    const Vector2f& bodyRate() const { return _state.bodyRate; }
+    const Vector2f& bodyRate() const { return _state[0].bodyRate; }
 
     // last_update() - returns system time of last sensor update
     uint32_t last_update() const { return _last_update_ms; }
@@ -98,7 +102,7 @@ private:
 
     static OpticalFlow *_singleton;
 
-    OpticalFlow_backend *backend;
+    OpticalFlow_backend *backend[OPTICALFLOW_MAX_INSTANCES];
 
     struct AP_OpticalFlow_Flags {
         uint8_t healthy     : 1;    // true if sensor is healthy
@@ -111,16 +115,20 @@ private:
     AP_Int16 _yawAngle_cd;          // yaw angle of sensor X axis with respect to vehicle X axis - centi degrees
     AP_Vector3f _pos_offset;        // position offset of the flow sensor in the body frame
     AP_Int8  _address;              // address on the bus (allows selecting between 8 possible I2C addresses for px4flow)
+    AP_Int8  _extra;                // number of extra OF sensors
+    AP_Int16  _tiltAngle_cd;          // tilt angle of the extra OF sensors
 
     // method called by backend to update frontend state:
     void update_state(const OpticalFlow_state &state);
+    void update_state2(const OpticalFlow_state &state, uint8_t instance);
 
     // state filled in by backend
-    struct OpticalFlow_state _state;
+    struct OpticalFlow_state _state[OPTICALFLOW_MAX_INSTANCES];
 
     uint32_t _last_update_ms;        // millis() time of last update
+    uint8_t num_instances;           // number of sensors
 
-    void Log_Write_Optflow();
+    void Log_Write_Optflow(uint8_t instance);
     uint32_t _log_bit = -1;     // bitmask bit which indicates if we should log.  -1 means we always log
 
 };
