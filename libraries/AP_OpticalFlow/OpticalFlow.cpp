@@ -115,7 +115,7 @@ void OpticalFlow::init(uint32_t log_bit)
      num_instances = _extra+1;
 
     // return immediately if not enabled or backend already created
-    if ((_type == (int8_t)OpticalFlowType::NONE) || (backend != nullptr)) {
+    if ((_type == (int8_t)OpticalFlowType::NONE) || (backend[0] != nullptr)) {
         return;
     }
 
@@ -193,7 +193,20 @@ void OpticalFlow::handle_msg(const mavlink_message_t &msg)
 }
 
 void OpticalFlow::update_state(const OpticalFlow_state &state)
-{}
+{
+
+    _state[0] = state;
+    _last_update_ms = AP_HAL::millis();
+
+    // write to log and send to EKF if new data has arrived
+    AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                       _state[0].flowRate,
+                                       _state[0].bodyRate,
+                                       _last_update_ms,
+                                       get_pos_offset());
+    Log_Write_Optflow(0);
+
+}
 void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance)
 {
     _state[instance] = state;
