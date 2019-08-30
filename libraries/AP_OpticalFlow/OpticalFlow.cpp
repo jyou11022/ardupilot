@@ -8,6 +8,9 @@
 #include "AP_OpticalFlow_MAV.h"
 #include "AP_OpticalFlow_HereFlow.h"
 #include <AP_Logger/AP_Logger.h>
+#include <stdio.h> // debug
+#include <AP_HAL/AP_HAL.h> //debug
+#include <AP_BoardConfig/AP_BoardConfig_CAN.h> // debug
 
 extern const AP_HAL::HAL& hal;
 
@@ -20,6 +23,9 @@ extern const AP_HAL::HAL& hal;
   #define OPTICAL_FLOW_TYPE_DEFAULT OpticalFlowType::NONE
  #endif
 #endif
+
+static const float s30 = sinf(radians(30.0)); // = 0.5
+static const float s60 = sinf(radians(60.0)); // = 0.8660254
 
 const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @Param: _TYPE
@@ -83,7 +89,7 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_ADDR", 5,  OpticalFlow, _address,   0),
 
-    // @Param: _ADDITIONAL
+    // @Param: _EXTRA
     // @DisplayName: Optical flow additional sensors
     // @Description: This indicates the number of additional optical flow sensors. Setting this to Disabled(0) will disable additional optical flow.
     // @Values: 0:Disabled, 1:Enabled
@@ -98,6 +104,20 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("_ORIENT_TILT", 7,  OpticalFlow,    _tiltAngle_cd,   0),
 
+    // @Param: _NAV_IND
+    // @DisplayName: Optical flow navigation indication
+    // @Description: This indicates the optical flow sensor used for EKF.
+    // @Values: 0:First, 1:Second 2: Third
+    // @User: Standard
+    AP_GROUPINFO("_NAV_IND", 8,  OpticalFlow,    _nav_ind, 0),
+
+    // @Param: _TESTING
+    // @DisplayName: Optical flow tesing disable/enable
+    // @Description: This allows different flow reading into to one of the core. (3rd core (IMU2) used for flow calculation)
+    // @Values: 0:Disabled, 1:Enabled
+    // @User: Standard
+    AP_GROUPINFO("_TESTING", 9,  OpticalFlow,    _testing, 0),
+
     AP_GROUPEND
 };
 
@@ -111,6 +131,7 @@ OpticalFlow::OpticalFlow()
 
 void OpticalFlow::init(uint32_t log_bit)
 {
+    hal.console->printf("Starting HereFlow\n");
      _log_bit = log_bit;
      num_instances = _extra+1;
 
@@ -146,7 +167,8 @@ void OpticalFlow::init(uint32_t log_bit)
             break;
         case OpticalFlowType::UAVCAN:
 #if HAL_WITH_UAVCAN
-            backend[i] = new AP_OpticalFlow_HereFlow(*this, i);
+            break;
+            //backend[i] = new AP_OpticalFlow_HereFlow(*this, i);
 #endif
             break;
         case OpticalFlowType::SITL:
@@ -156,7 +178,7 @@ void OpticalFlow::init(uint32_t log_bit)
             break;
         }
 
-        if (backend != nullptr) {
+        if (backend[i] != nullptr) {
             backend[i]->init();
         }
     }
@@ -203,25 +225,83 @@ void OpticalFlow::update_state(const OpticalFlow_state &state)
                                        _state[0].flowRate,
                                        _state[0].bodyRate,
                                        _last_update_ms,
-                                       get_pos_offset());
+                                       get_pos_offset(),-1);
     Log_Write_Optflow(0);
 
 }
+
 void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance)
 {
+
     _state[instance] = state;
-    _last_update_ms = AP_HAL::millis();
+    states_new[instance] = true;
 
-    //Test Loop
-    if (instance == 1) { 
+    all_true = true;
 
-        // write to log and send to EKF if new data has arrived
-        AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                           _state[instance].flowRate,
-                                           _state[instance].bodyRate,
-                                           _last_update_ms,
-                                           get_pos_offset());
-        Log_Write_Optflow(instance);
+    for (uint8_t i = 0; i<num_instances; i++) {
+        if (i == instance) { 
+            continue; 
+        } else if (!states_new[i]) {
+            all_true = false;
+            break;
+        }
+    }
+    if (all_true) {
+        for (uint8_t i = 0; i<num_instances; i++) {
+            states_new[i] = false;
+            Log_Write_Optflow(i);
+        }
+        _last_update_ms = AP_HAL::millis();
+        
+        if (_testing == 0) {
+            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[_nav_ind].flowRate,
+                                               _state[_nav_ind].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),-1);
+        } else {
+            //Remove Yaw
+            //yaw_fused = (_state[0].flowRate.y+_state[1].flowRate.y+_state[2].flowRate.y)/3.0;
+            yaw_fused = AP::ahrs().get_gyro().z/1.2;
+            _state[0].flowRate.y -= yaw_fused;
+            _state[1].flowRate.y -= yaw_fused;
+            _state[2].flowRate.y -= yaw_fused;
+
+            //Fusion
+            _state[0].flowRate = Vector2f(_state[0].flowRate*Vector2f(s60,s30),_state[0].flowRate*Vector2f(-s30,s60))*1.2;
+            _state[1].flowRate = Vector2f(_state[1].flowRate*Vector2f(-s60,s30),_state[1].flowRate*Vector2f(-s30,-s60))*1.2;
+            _state[2].flowRate = Vector2f(-_state[2].flowRate.y,_state[2].flowRate.x)*1.2;
+            //_state[2].flowRate = Vector2f(yaw_fused, AP::ahrs().get_gyro().z);
+/*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[2].flowRate,
+                                               _state[2].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),0);*/
+            
+            //Put custom EKF data input here
+/*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               Vector2f((_state[1].flowRate.y+_state[2].flowRate.y)*.6,_state[0].flowRate.y),
+                                               _state[0].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),0);*/
+            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               (_state[0].flowRate+_state[1].flowRate+_state[2].flowRate)/3.0,
+                                               _state[3].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),-1);
+/*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[1].flowRate,
+                                               _state[3].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),1);
+            if (num_instances >= 3) {
+                AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                                   _state[2].flowRate,
+                                                   _state[3].bodyRate,
+                                                   _last_update_ms,
+                                                   get_pos_offset(),2);
+            }*/
+        }
     }
 }
 
@@ -236,8 +316,33 @@ void OpticalFlow::Log_Write_Optflow(uint8_t instance)
         return;
     }
 
+    if (instance == 0) {
+        struct log_Optflow pkt = {
+            LOG_PACKET_HEADER_INIT(LOG_OPTFLOW_MSG),
+            time_us         : AP_HAL::micros64(),
+            surface_quality : _state[instance].surface_quality,
+            flow_x          : _state[instance].flowRate.x,
+            flow_y          : _state[instance].flowRate.y,
+            body_x          : _state[instance].bodyRate.x,
+            body_y          : _state[instance].bodyRate.y
+        };
+        logger->WriteBlock(&pkt, sizeof(pkt));
+        return;
+    } else if (instance == 1) {
+        struct log_Optflow pkt = {
+            LOG_PACKET_HEADER_INIT(LOG_OPTFLOW2_MSG),
+            time_us         : AP_HAL::micros64(),
+            surface_quality : _state[instance].surface_quality,
+            flow_x          : _state[instance].flowRate.x,
+            flow_y          : _state[instance].flowRate.y,
+            body_x          : _state[instance].bodyRate.x,
+            body_y          : _state[instance].bodyRate.y
+        };
+        logger->WriteBlock(&pkt, sizeof(pkt));
+        return;
+    }
     struct log_Optflow pkt = {
-        LOG_PACKET_HEADER_INIT(LOG_OPTFLOW_MSG),
+        LOG_PACKET_HEADER_INIT(LOG_OPTFLOW3_MSG),
         time_us         : AP_HAL::micros64(),
         surface_quality : _state[instance].surface_quality,
         flow_x          : _state[instance].flowRate.x,
@@ -246,6 +351,7 @@ void OpticalFlow::Log_Write_Optflow(uint8_t instance)
         body_y          : _state[instance].bodyRate.y
     };
     logger->WriteBlock(&pkt, sizeof(pkt));
+
 }
 
 

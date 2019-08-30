@@ -102,6 +102,9 @@ private:
 
     static OpticalFlow *_singleton;
 
+    bool states_new[OPTICALFLOW_MAX_INSTANCES];
+    bool all_true;
+
     OpticalFlow_backend *backend[OPTICALFLOW_MAX_INSTANCES];
 
     struct AP_OpticalFlow_Flags {
@@ -116,8 +119,15 @@ private:
     AP_Vector3f _pos_offset;        // position offset of the flow sensor in the body frame
     AP_Int8  _address;              // address on the bus (allows selecting between 8 possible I2C addresses for px4flow)
     AP_Int8  _extra;                // number of extra OF sensors
-    AP_Int16  _tiltAngle_cd;          // tilt angle of the extra OF sensors
+    AP_Int16  _tiltAngle_cd;        // tilt angle of the extra OF sensors
+    AP_Int8  _nav_ind;              // Instance of EKF
+    AP_Int8 _testing;               // Testing Indicator (0:disabled, 1:enabled)
 
+    //For fusion
+    Vector2f flow_fused;
+    Vector2f body_fused;
+    float yaw_fused;
+    
     // method called by backend to update frontend state:
     void update_state(const OpticalFlow_state &state);
     void update_state2(const OpticalFlow_state &state, uint8_t instance);

@@ -598,6 +598,19 @@ struct PACKED log_NKF5 {
     float posErr;
 };
 
+//Custom MSG - OF from EKF
+struct PACKED log_EKFOF {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float fRadX;
+    float fRadY;
+    float fRadXcomp;
+    float fRadycomp;
+    float bRadX;
+    float bRadY;
+    float bRadZ;
+};
+
 struct PACKED log_Quaternion {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -1479,6 +1492,24 @@ struct PACKED log_Arm_Disarm {
       "XKV1","Qffffffffffff","TimeUS,V00,V01,V02,V03,V04,V05,V06,V07,V08,V09,V10,V11", "s------------", "F------------" }, \
     { LOG_XKV2_MSG, sizeof(log_ekfStateVar), \
       "XKV2","Qffffffffffff","TimeUS,V12,V13,V14,V15,V16,V17,V18,V19,V20,V21,V22,V23", "s------------", "F------------" }, \
+    { LOG_NOF1_MSG, sizeof(log_NKF5), \
+      "NOF1","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
+    { LOG_NOF2_MSG, sizeof(log_NKF5), \
+      "NOF2","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
+    { LOG_NOF3_MSG, sizeof(log_NKF5), \
+      "NOF3","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
+    { LOG_XOF1_MSG, sizeof(log_NKF5), \
+      "XOF1","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
+    { LOG_XOF2_MSG, sizeof(log_NKF5), \
+      "XOF2","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
+    { LOG_XOF3_MSG, sizeof(log_NKF5), \
+      "XOF3","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
+    { LOG_EKFOF1_MSG, sizeof(log_EKFOF), \
+      "EOF1","Qfffffff","TimeUS,fX,fY,fcX,fcY,bX,bY,bZ", "sEEEEEEE", "F0000000" }, \
+    { LOG_EKFOF2_MSG, sizeof(log_EKFOF), \
+      "EOF2","Qfffffff","TimeUS,fX,fY,fcX,fcY,bX,bY,bZ", "sEEEEEEE", "F0000000" }, \
+    { LOG_EKFOF3_MSG, sizeof(log_EKFOF), \
+      "EOF3","Qfffffff","TimeUS,fX,fY,fcX,fcY,bX,bY,bZ", "sEEEEEEE", "F0000000" }, \
     { LOG_TERRAIN_MSG, sizeof(log_TERRAIN), \
       "TERR","QBLLHffHH","TimeUS,Status,Lat,Lng,Spacing,TerrH,CHeight,Pending,Loaded", "s-DU-mm--", "F-GG-00--" }, \
     { LOG_GPS_UBX1_MSG, sizeof(log_Ubx1), \
@@ -1578,7 +1609,11 @@ struct PACKED log_Arm_Disarm {
     { LOG_VISUALODOM_MSG, sizeof(log_VisualOdom), \
       "VISO", "Qffffffff", "TimeUS,dt,AngDX,AngDY,AngDZ,PosDX,PosDY,PosDZ,conf", "ssrrrmmm-", "FF000000-" }, \
     { LOG_OPTFLOW_MSG, sizeof(log_Optflow), \
-      "OF",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY", "s-EEEE", "F-0000" }, \
+      "ROF",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY", "s-EEEE", "F-0000" }, \
+    { LOG_OPTFLOW2_MSG, sizeof(log_Optflow), \
+      "ROF2",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY", "s-EEEE", "F-0000" }, \
+    { LOG_OPTFLOW3_MSG, sizeof(log_Optflow), \
+      "ROF3",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY", "s-EEEE", "F-0000" }, \
     { LOG_WHEELENCODER_MSG, sizeof(log_WheelEncoder), \
       "WENC",  "Qfbfb", "TimeUS,Dist0,Qual0,Dist1,Qual1", "sm-m-", "F0-0-" }, \
     { LOG_ADSB_MSG, sizeof(log_ADSB), \
@@ -1644,6 +1679,17 @@ enum LogMessages : uint8_t {
     LOG_XKFD_MSG,
     LOG_XKV1_MSG,
     LOG_XKV2_MSG,
+
+    //Extra OF msg from EKF
+    LOG_NOF1_MSG,
+    LOG_NOF2_MSG,
+    LOG_NOF3_MSG,
+    LOG_XOF1_MSG,
+    LOG_XOF2_MSG,
+    LOG_XOF3_MSG,
+    LOG_EKFOF1_MSG,
+    LOG_EKFOF2_MSG,
+    LOG_EKFOF3_MSG,
 
     LOG_FORMAT_MSG = 128, // this must remain #128
 
@@ -1764,6 +1810,8 @@ enum LogMessages : uint8_t {
     LOG_ASP2_MSG,
     LOG_PERFORMANCE_MSG,
     LOG_OPTFLOW_MSG,
+    LOG_OPTFLOW2_MSG,
+    LOG_OPTFLOW3_MSG,
     LOG_EVENT_MSG,
     LOG_WHEELENCODER_MSG,
     LOG_MAV_MSG,

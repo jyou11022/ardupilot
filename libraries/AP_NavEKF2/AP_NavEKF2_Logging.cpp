@@ -179,6 +179,60 @@ void NavEKF2::Log_Write_NKF5(uint64_t time_us) const
     AP::logger().WriteBlock(&pkt5, sizeof(pkt5));
 }
 
+void NavEKF2::Log_Write_NKF5a(uint8_t _core, LogMessages msg_id, uint64_t time_us) const
+{
+    // Write fifth EKF packet - take data from the primary instance
+    float normInnov=0; // normalised innovation variance ratio for optical flow observations fused by the main nav filter
+    float gndOffset=0; // estimated vertical position of the terrain relative to the nav filter zero datum
+    float flowInnovX=0, flowInnovY=0; // optical flow LOS rate vector innovations from the main nav filter
+    float auxFlowInnov=0; // optical flow LOS rate innovation from terrain offset estimator
+    float HAGL=0; // height above ground level
+    float rngInnov=0; // range finder innovations
+    float range=0; // measured range
+    float gndOffsetErr=0; // filter ground offset state error
+    Vector3f predictorErrors; // output predictor angle, velocity and position tracking error
+    getFlowDebug(_core,normInnov, gndOffset, flowInnovX, flowInnovY, auxFlowInnov, HAGL, rngInnov, range, gndOffsetErr);
+    getOutputTrackingError(_core,predictorErrors);
+    const struct log_NKF5 pkt6{
+        LOG_PACKET_HEADER_INIT(msg_id),
+        time_us : time_us,
+        normInnov : (uint8_t)(MIN(100*normInnov,255)),
+        FIX : (int16_t)(1000*flowInnovX),
+        FIY : (int16_t)(1000*flowInnovY),
+        AFI : (int16_t)(1000*auxFlowInnov),
+        HAGL : (int16_t)(100*HAGL),
+        offset : (int16_t)(100*gndOffset),
+        RI : (int16_t)(100*rngInnov),
+        meaRng : (uint16_t)(100*range),
+        errHAGL : (uint16_t)(100*gndOffsetErr),
+        angErr : (float)predictorErrors.x,
+        velErr : (float)predictorErrors.y,
+        posErr : (float)predictorErrors.z
+     };
+    AP::logger().WriteBlock(&pkt6, sizeof(pkt6));
+}
+
+//Extra Log for OF+EKF Dev
+void NavEKF2::Log_Write_EKFOF(uint8_t _core, LogMessages msg_id, uint64_t time_us) const
+{
+    Vector2f flowRadXY;
+    Vector2f flowRadXYcomp;
+    Vector3f bodyRadXYZ;
+    getFlowEKF(_core,flowRadXY, flowRadXYcomp, bodyRadXYZ);
+    const struct log_EKFOF pkt7{
+        LOG_PACKET_HEADER_INIT(msg_id),
+        time_us : time_us,
+        fRadX : (float)(flowRadXY.x),
+        fRadY : (float)(flowRadXY.y),
+        fRadXcomp : (float)(flowRadXYcomp.x),
+        fRadycomp : (float)(flowRadXYcomp.y),
+        bRadX : (float)(bodyRadXYZ.x),
+        bRadY : (float)(bodyRadXYZ.y),
+        bRadZ : (float)(bodyRadXYZ.z),
+     };
+    AP::logger().WriteBlock(&pkt7, sizeof(pkt7));
+}
+
 void NavEKF2::Log_Write_Quaternion(uint8_t _core, LogMessages msg_id, uint64_t time_us) const
 {
     // log quaternion
@@ -245,7 +299,9 @@ void NavEKF2::Log_Write()
     Log_Write_NKF3(0, LOG_NKF3_MSG, time_us);
     Log_Write_NKF4(0, LOG_NKF4_MSG, time_us);
     Log_Write_NKF5(time_us);
+    Log_Write_NKF5a(0, LOG_NOF1_MSG, time_us);
     Log_Write_Quaternion(0, LOG_NKQ1_MSG, time_us);
+    Log_Write_EKFOF(0, LOG_EKFOF1_MSG, time_us);
 
     // log EKF state info for the second EFK core if enabled
     if (activeCores() >= 2) {
@@ -253,7 +309,9 @@ void NavEKF2::Log_Write()
         Log_Write_NKF2(1, LOG_NKF7_MSG, time_us);
         Log_Write_NKF3(1, LOG_NKF8_MSG, time_us);
         Log_Write_NKF4(1, LOG_NKF9_MSG, time_us);
+        Log_Write_NKF5a(1, LOG_NOF2_MSG, time_us);
         Log_Write_Quaternion(1, LOG_NKQ2_MSG, time_us);
+        Log_Write_EKFOF(1, LOG_EKFOF2_MSG, time_us);
     }
 
     // log EKF state info for the third EFK core if enabled
@@ -262,7 +320,9 @@ void NavEKF2::Log_Write()
         Log_Write_NKF2(2, LOG_NKF12_MSG, time_us);
         Log_Write_NKF3(2, LOG_NKF13_MSG, time_us);
         Log_Write_NKF4(2, LOG_NKF14_MSG, time_us);
+        Log_Write_NKF5a(2, LOG_NOF3_MSG, time_us);
         Log_Write_Quaternion(2, LOG_NKQ3_MSG, time_us);
+        Log_Write_EKFOF(2, LOG_EKFOF3_MSG, time_us);
     }
 
     // write range beacon fusion debug packet if the range value is non-zero
