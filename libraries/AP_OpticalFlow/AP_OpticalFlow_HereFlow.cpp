@@ -6,6 +6,7 @@
 
 #include <AP_BoardConfig/AP_BoardConfig_CAN.h>
 #include <AP_UAVCAN/AP_UAVCAN.h>
+#include <stdio.h> // debug
 
 #include <com/hex/equipment/flow/Measurement.hpp>
 
@@ -28,11 +29,12 @@ UC_REGISTRY_BINDER(MeasurementCb, com::hex::equipment::flow::Measurement);
 /*
   constructor - registers instance at top Flow driver
  */
-AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t &instance) :
+AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t instance) :
 
     OpticalFlow_backend(flow)
 {
     this->_node_id = instance;
+    printf("Found HereFlow\n"); //debug
 //     if (_driver) {
 //         AP_HAL::panic("Only one instance of Flow supported!");
 //     }
@@ -41,8 +43,9 @@ AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t &ins
 }
 
 //Method to find the backend relating to the node id
-AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::get_uavcan_backend(AP_UAVCAN* ap_uavcan, uint8_t &node_id)
+AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::get_uavcan_backend(AP_UAVCAN* ap_uavcan, uint8_t node_id)
 {
+    printf("Node ID: %d\n", node_id);
     if (ap_uavcan == nullptr) {
         return nullptr;
     }
@@ -50,17 +53,26 @@ AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::get_uavcan_backend(AP_UAVCAN* 
     // for (uint8_t i = 0; i < OPTICALFLOW_MAX_INSTANCES; i++) {
     //     if (AP::OpticalFlow()._type == OpticalFlowType::UAVCAN) {
     driver = (AP_OpticalFlow_HereFlow*)AP::opticalflow()->backend[node_id];
+    //printf("Are we Here?\n"); //debug
 
     //Double check if the driver was initialised as UAVCAN Type
     if (driver != nullptr) {
         if (driver->_ap_uavcan == ap_uavcan && 
             driver->_node_id == node_id) {
+            //printf("Are we Here2?\n"); //debug
             return driver;
         } else {
             //we found a possible duplicate addressed sensor
             //we return nothing in such scenario
             return nullptr;
         }
+    }
+
+    AP::opticalflow()->backend[node_id] = new AP_OpticalFlow_HereFlow(*AP::opticalflow(), node_id);
+    driver = (AP_OpticalFlow_HereFlow*)AP::opticalflow()->backend[node_id];
+    if (driver->_ap_uavcan == nullptr) {
+        driver->_ap_uavcan = ap_uavcan;
+        driver->_node_id = node_id;
     }
 
     return driver;
@@ -90,9 +102,11 @@ void AP_OpticalFlow_HereFlow::subscribe_msgs(AP_UAVCAN* ap_uavcan)
 //updates driver states based on received HereFlow messages
 void AP_OpticalFlow_HereFlow::handle_measurement(AP_UAVCAN* ap_uavcan, uint8_t node_id, const MeasurementCb &cb)
 {
+    //("Are we Here1?\n"); //debug
     //fetch the matching uavcan driver, node id and sensor id backend instance
     AP_OpticalFlow_HereFlow* driver = get_uavcan_backend(ap_uavcan, node_id);
     if (driver == nullptr) {
+        //printf("Are we Heres5?\n"); //debug
         return;
     }
 
@@ -105,7 +119,6 @@ void AP_OpticalFlow_HereFlow::handle_measurement(AP_UAVCAN* ap_uavcan, uint8_t n
         driver->_ap_uavcan = ap_uavcan;
         driver->_node_id = node_id;
     }
-
     if (driver->_ap_uavcan == ap_uavcan && driver->_node_id == node_id) {
         WITH_SEMAPHORE(driver->_sem);
         driver->new_data = true;
@@ -113,6 +126,7 @@ void AP_OpticalFlow_HereFlow::handle_measurement(AP_UAVCAN* ap_uavcan, uint8_t n
         driver->bodyRate = Vector2f(cb.msg->rate_gyro_integral[0], cb.msg->rate_gyro_integral[1]);
         driver->integral_time = cb.msg->integration_interval;
         driver->surface_quality = cb.msg->quality;
+        printf("DRV: %u %f %f\n", cb.msg->quality, cb.msg->flow_integral[0], cb.msg->flow_integral[1]);
     }
 }
 
@@ -124,10 +138,13 @@ void AP_OpticalFlow_HereFlow::update()
 // Read the sensor
 void AP_OpticalFlow_HereFlow::_push_state(void)
 {
+
+    //printf("Are we Heres3?\n"); //debug
     WITH_SEMAPHORE(_sem);
-    if (!new_data) {
-        return;
-    }
+    // if (!new_data) {
+    //     //printf("Are we Heres5?\n"); //debug
+    //     return;
+    // }
     struct OpticalFlow::OpticalFlow_state state;
     const Vector2f flowScaler = _flowScaler();
     //setup scaling based on parameters
@@ -141,7 +158,8 @@ void AP_OpticalFlow_HereFlow::_push_state(void)
     state.surface_quality = surface_quality;
     _applyYaw(state.flowRate);
     _applyYaw(state.bodyRate);
-    // hal.console->printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
+    //printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
+    //hal.console->printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
     _update_frontend2(state,_node_id);
     new_data = false;
 }
