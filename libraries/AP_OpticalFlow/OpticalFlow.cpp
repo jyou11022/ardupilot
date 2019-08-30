@@ -8,6 +8,9 @@
 #include "AP_OpticalFlow_MAV.h"
 #include "AP_OpticalFlow_HereFlow.h"
 #include <AP_Logger/AP_Logger.h>
+#include <stdio.h> // debug
+#include <AP_HAL/AP_HAL.h> //debug
+#include <AP_BoardConfig/AP_BoardConfig_CAN.h> // debug
 
 extern const AP_HAL::HAL& hal;
 
@@ -111,6 +114,7 @@ OpticalFlow::OpticalFlow()
 
 void OpticalFlow::init(uint32_t log_bit)
 {
+    hal.console->printf("Starting HereFlow\n");
      _log_bit = log_bit;
      num_instances = _extra+1;
 
@@ -156,7 +160,7 @@ void OpticalFlow::init(uint32_t log_bit)
             break;
         }
 
-        if (backend != nullptr) {
+        if (backend[i] != nullptr) {
             backend[i]->init();
         }
     }
@@ -209,11 +213,12 @@ void OpticalFlow::update_state(const OpticalFlow_state &state)
 }
 void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance)
 {
+
     _state[instance] = state;
     _last_update_ms = AP_HAL::millis();
 
     //Test Loop
-    if (instance == 1) { 
+    if (instance == 0) { 
 
         // write to log and send to EKF if new data has arrived
         AP::ahrs_navekf().writeOptFlowMeas(quality(),
@@ -235,6 +240,7 @@ void OpticalFlow::Log_Write_Optflow(uint8_t instance)
         !logger->should_log(_log_bit)) {
         return;
     }
+    hal.console->printf("Logging HereFlow\n");
 
     struct log_Optflow pkt = {
         LOG_PACKET_HEADER_INIT(LOG_OPTFLOW_MSG),
