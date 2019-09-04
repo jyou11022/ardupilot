@@ -1,9 +1,12 @@
 #pragma once
 #include "OpticalFlow_backend.h"
 
+#define UAVCAN_START_NODE_ID 40
+
 #if HAL_WITH_UAVCAN
 
 #include <AP_UAVCAN/AP_UAVCAN.h>
+
 
 class MeasurementCb;
 
@@ -29,6 +32,7 @@ private:
     bool new_data;
 
     uint8_t _node_id;
+    uint8_t _instance;
 
     // AP_OpticalFlow_HereFlow* _driver;
     AP_UAVCAN* _ap_uavcan;
