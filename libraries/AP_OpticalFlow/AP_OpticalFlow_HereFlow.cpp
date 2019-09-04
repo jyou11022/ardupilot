@@ -33,7 +33,8 @@ AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow, uint8_t inst
 
     OpticalFlow_backend(flow)
 {
-    this->_node_id = instance;
+    this->_instance = instance;
+    this->_node_id = instance+UAVCAN_START_NODE_ID;
     printf("Found HereFlow\n"); //debug
 //     if (_driver) {
 //         AP_HAL::panic("Only one instance of Flow supported!");
@@ -52,13 +53,16 @@ AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::get_uavcan_backend(AP_UAVCAN* 
     AP_OpticalFlow_HereFlow* driver = nullptr;
     // for (uint8_t i = 0; i < OPTICALFLOW_MAX_INSTANCES; i++) {
     //     if (AP::OpticalFlow()._type == OpticalFlowType::UAVCAN) {
-    driver = (AP_OpticalFlow_HereFlow*)AP::opticalflow()->backend[node_id];
+    driver = (AP_OpticalFlow_HereFlow*)AP::opticalflow()->backend[node_id-UAVCAN_START_NODE_ID];
     //printf("Are we Here?\n"); //debug
 
     //Double check if the driver was initialised as UAVCAN Type
     if (driver != nullptr) {
-        if (driver->_ap_uavcan == ap_uavcan && 
-            driver->_node_id == node_id) {
+        if (driver->_node_id == node_id) {
+            if (driver->_ap_uavcan != ap_uavcan){
+                driver->_ap_uavcan = ap_uavcan;
+                return driver;
+            }
             //printf("Are we Here2?\n"); //debug
             return driver;
         } else {
@@ -68,8 +72,8 @@ AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::get_uavcan_backend(AP_UAVCAN* 
         }
     }
 
-    AP::opticalflow()->backend[node_id] = new AP_OpticalFlow_HereFlow(*AP::opticalflow(), node_id);
-    driver = (AP_OpticalFlow_HereFlow*)AP::opticalflow()->backend[node_id];
+    AP::opticalflow()->backend[node_id-UAVCAN_START_NODE_ID] = new AP_OpticalFlow_HereFlow(*AP::opticalflow(), node_id-UAVCAN_START_NODE_ID);
+    driver = (AP_OpticalFlow_HereFlow*)AP::opticalflow()->backend[node_id-UAVCAN_START_NODE_ID];
     if (driver->_ap_uavcan == nullptr) {
         driver->_ap_uavcan = ap_uavcan;
         driver->_node_id = node_id;
@@ -126,7 +130,7 @@ void AP_OpticalFlow_HereFlow::handle_measurement(AP_UAVCAN* ap_uavcan, uint8_t n
         driver->bodyRate = Vector2f(cb.msg->rate_gyro_integral[0], cb.msg->rate_gyro_integral[1]);
         driver->integral_time = cb.msg->integration_interval;
         driver->surface_quality = cb.msg->quality;
-        printf("DRV: %u %f %f\n", cb.msg->quality, cb.msg->flow_integral[0], cb.msg->flow_integral[1]);
+        //printf("DRV: %u %f %f\n", cb.msg->quality, cb.msg->flow_integral[0], cb.msg->flow_integral[1]);
     }
 }
 
@@ -158,7 +162,7 @@ void AP_OpticalFlow_HereFlow::_push_state(void)
     state.surface_quality = surface_quality;
     _applyYaw(state.flowRate);
     _applyYaw(state.bodyRate);
-    //printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
+    printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
     //hal.console->printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
     _update_frontend2(state,_node_id);
     new_data = false;
