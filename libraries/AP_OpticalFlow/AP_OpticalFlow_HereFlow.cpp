@@ -98,9 +98,7 @@ void AP_OpticalFlow_HereFlow::_push_state(void)
     state.surface_quality = surface_quality;
     _applyYaw(state.flowRate);
     _applyYaw(state.bodyRate);
-    //hal.console->printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
-    printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
-
+    // hal.console->printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
     _update_frontend(state);
     new_data = false;
 }
