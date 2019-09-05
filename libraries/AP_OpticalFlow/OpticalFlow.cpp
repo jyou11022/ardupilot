@@ -211,6 +211,18 @@ void OpticalFlow::Log_Write_Optflow()
         body_y          : _state.bodyRate.y
     };
     logger->WriteBlock(&pkt, sizeof(pkt));
+
+    struct log_Optflow pkt2 = {
+        LOG_PACKET_HEADER_INIT(LOG_OPTFLOW2_MSG),
+        time_us         : AP_HAL::micros64(),
+        surface_quality : _state.surface_quality,
+        flow_x          : _state.flowRate.x,
+        flow_y          : _state.flowRate.y,
+        body_x          : _state.bodyRate.x,
+        body_y          : _state.bodyRate.y
+    };
+    logger->WriteBlock(&pkt2, sizeof(pkt2));
+
 }
 
 
