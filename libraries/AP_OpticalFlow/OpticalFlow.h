@@ -23,7 +23,7 @@
 #include <AP_Math/AP_Math.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 
-#define OPTICALFLOW_MAX_INSTANCES 10
+#define OPTICALFLOW_MAX_INSTANCES 2
 
 class OpticalFlow_backend;
 class AP_AHRS_NavEKF;
