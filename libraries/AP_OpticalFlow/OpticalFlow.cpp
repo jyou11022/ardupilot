@@ -150,7 +150,8 @@ void OpticalFlow::init(uint32_t log_bit)
             break;
         case OpticalFlowType::UAVCAN:
 #if HAL_WITH_UAVCAN
-            backend[i] = new AP_OpticalFlow_HereFlow(*this, i);
+            break;
+            //backend[i] = new AP_OpticalFlow_HereFlow(*this, i);
 #endif
             break;
         case OpticalFlowType::SITL:
