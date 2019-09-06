@@ -216,19 +216,32 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
 {
 
     _state[instance] = state;
-    _last_update_ms = AP_HAL::millis();
+    states_new[instance] = true;
 
-    //Test Loop
-    if (instance == 0) { 
+    all_true = true;
 
-        // write to log and send to EKF if new data has arrived
+    for (uint8_t i = 0; i<num_instances; i++) {
+        if (i == instance) { 
+            continue; 
+        } else if (!states_new[i]) {
+            all_true = false;
+            break;
+        }
+    }
+    if (all_true) {
+        for (uint8_t i = 0; i<num_instances; i++) {
+            states_new[i] = false;
+        }
+        _last_update_ms = AP_HAL::millis();
+    
         AP::ahrs_navekf().writeOptFlowMeas(quality(),
                                            _state[instance].flowRate,
                                            _state[instance].bodyRate,
                                            _last_update_ms,
                                            get_pos_offset());
+        Log_Write_Optflow(0);
+        Log_Write_Optflow(1);
     }
-    Log_Write_Optflow(instance);
 }
 
 void OpticalFlow::Log_Write_Optflow(uint8_t instance)

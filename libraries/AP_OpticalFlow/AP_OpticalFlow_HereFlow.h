@@ -24,9 +24,9 @@ public:
 
     static AP_OpticalFlow_HereFlow* get_uavcan_backend(AP_UAVCAN* ap_uavcan, uint8_t node_id);
 
-    static int8_t get_instance(uint8_t node_id)
+    static uint8_t get_instance(uint8_t node_id)
     {
-        return ((int8_t)node_id) - HEREFLOW_INIT_NODE_ID;
+        return node_id - HEREFLOW_INIT_NODE_ID;
     }
 
 private:
@@ -42,6 +42,7 @@ private:
     // AP_OpticalFlow_HereFlow* _driver;
     AP_UAVCAN* _ap_uavcan;
     void _push_state(void);
+
 
 };
 #endif //HAL_WITH_UAVCAN
