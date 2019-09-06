@@ -102,6 +102,9 @@ private:
 
     static OpticalFlow *_singleton;
 
+    bool states_new[OPTICALFLOW_MAX_INSTANCES];
+    bool all_true;
+
     OpticalFlow_backend *backend[OPTICALFLOW_MAX_INSTANCES];
 
     struct AP_OpticalFlow_Flags {
