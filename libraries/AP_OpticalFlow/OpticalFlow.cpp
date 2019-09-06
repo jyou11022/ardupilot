@@ -227,8 +227,8 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                            _state[instance].bodyRate,
                                            _last_update_ms,
                                            get_pos_offset());
-        Log_Write_Optflow(instance);
     }
+    Log_Write_Optflow(instance);
 }
 
 void OpticalFlow::Log_Write_Optflow(uint8_t instance)
@@ -241,10 +241,22 @@ void OpticalFlow::Log_Write_Optflow(uint8_t instance)
         !logger->should_log(_log_bit)) {
         return;
     }
-    hal.console->printf("Logging HereFlow\n");
 
+    if (instance == 0) {
+        struct log_Optflow pkt = {
+            LOG_PACKET_HEADER_INIT(LOG_OPTFLOW_MSG),
+            time_us         : AP_HAL::micros64(),
+            surface_quality : _state[instance].surface_quality,
+            flow_x          : _state[instance].flowRate.x,
+            flow_y          : _state[instance].flowRate.y,
+            body_x          : _state[instance].bodyRate.x,
+            body_y          : _state[instance].bodyRate.y
+        };
+        logger->WriteBlock(&pkt, sizeof(pkt));
+        return;
+    }
     struct log_Optflow pkt = {
-        LOG_PACKET_HEADER_INIT(LOG_OPTFLOW_MSG),
+        LOG_PACKET_HEADER_INIT(LOG_OPTFLOW2_MSG),
         time_us         : AP_HAL::micros64(),
         surface_quality : _state[instance].surface_quality,
         flow_x          : _state[instance].flowRate.x,
