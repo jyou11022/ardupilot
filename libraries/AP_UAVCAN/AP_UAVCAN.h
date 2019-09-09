@@ -38,6 +38,9 @@
 #define AP_UAVCAN_MAX_BARO_NODES 4
 #define AP_UAVCAN_MAX_BI_NUMBER 4
 
+//HereFlow
+#define AP_UAVCAN_MAX_FLOW_NODES 1
+
 #define AP_UAVCAN_SW_VERS_MAJOR 1
 #define AP_UAVCAN_SW_VERS_MINOR 0
 
@@ -118,6 +121,20 @@ public:
     uint8_t find_smallest_free_bi_id();
     void update_bi_state(uint8_t id);
 
+    //HereFlow
+    struct Flow_Info {
+        Vector2f flowRate, bodyRate;
+        uint8_t surface_quality;
+        float integral_time;
+        bool new_data;
+    }
+    uint8_t register_flow_listener_to_node(OpticalFlow_backend* new_listener, uint8_t node);
+    void remove_flow_listener(OpticalFlow_backend* rem_listener);
+    Flow_Info *find_flow_node(uint8_t node);
+    void update_flow_state(uint8_t node);
+
+
+
     // synchronization for RC output
     void SRV_sem_take();
     void SRV_sem_give();
@@ -151,6 +168,13 @@ private:
     Baro_Info _baro_node_state[AP_UAVCAN_MAX_BARO_NODES];
     uint8_t _baro_listener_to_node[AP_UAVCAN_MAX_LISTENERS];
     AP_Baro_Backend* _baro_listeners[AP_UAVCAN_MAX_LISTENERS];
+
+    // ------------------------- HereFlow
+    uint8_t _flow_nodes[AP_UAVCAN_MAX_FLOW_NODES];
+    uint8_t _flow_node_taken[AP_UAVCAN_MAX_FLOW_NODES];
+    Flow_Info _flow_node_state[AP_UAVCAN_MAX_FLOW_NODES];
+    uint8_t _flow_listener_to_node[AP_UAVCAN_MAX_LISTENERS];
+    OpticalFlow_backend* _flow_listeners[AP_UAVCAN_MAX_LISTENERS];
 
     // ------------------------- MAG
     uint8_t _mag_nodes[AP_UAVCAN_MAX_MAG_NODES];
