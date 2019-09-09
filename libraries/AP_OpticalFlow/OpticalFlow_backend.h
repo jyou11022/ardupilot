@@ -35,6 +35,12 @@ public:
     // read latest values from sensor and fill in x,y and totals.
     virtual void update() = 0;
 
+    //HereFlow: callback for UAVCAN messages
+    virtual void handle_flow_msg(Vector2f flowRate, Vector2f bodyRate, uint8_t  surface_quality, float integral_time) {}
+    void backend_update(uint8_t instance);
+
+
+
 protected:
     // access to frontend
     OpticalFlow &frontend;
