@@ -37,6 +37,7 @@ void OpticalFlow_backend::_update_frontend(const struct OpticalFlow::OpticalFlow
     frontend._last_update_ms = AP_HAL::millis();
 }
 
+
 // apply yaw angle to a vector
 void OpticalFlow_backend::_applyYaw(Vector2f &v)
 {
