@@ -69,6 +69,14 @@ void NavEKF2_core::getFlowDebug(float &varFlow, float &gndOffset, float &flowInn
     gndOffsetErr = sqrtf(Popt); // note Popt is constrained to be non-negative in EstimateTerrainOffset()
 }
 
+// return extra OF data used for EKF
+void NavEKF2_core::getFlowEKF(Vector2f &flowRadXY, Vector2f &flowRadXYcomp, Vector3f &bodyRadXYZ) const
+{
+    flowRadXY = ofDataNew.flowRadXY;
+    flowRadXYcomp = ofDataNew.flowRadXYcomp;
+    bodyRadXYZ = ofDataNew.bodyRadXYZ;
+}
+
 // return data for debugging range beacon fusion one beacon at a time, incrementing the beacon index after each call
 bool NavEKF2_core::getRangeBeaconDebug(uint8_t &ID, float &rng, float &innov, float &innovVar, float &testRatio, Vector3f &beaconPosNED, float &offsetHigh, float &offsetLow)
 {
