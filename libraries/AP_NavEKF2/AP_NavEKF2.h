@@ -223,6 +223,9 @@ public:
     // An out of range instance (eg -1) returns data for the primary instance
     void getFlowDebug(int8_t instance, float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnov, float &HAGL, float &rngInnov, float &range, float &gndOffsetErr) const;
 
+
+    void getFlowEKF(int8_t instance, Vector2f &flowRadXY, Vector2f &flowRadXYcomp, Vector3f &bodyRadXYZ) const;
+
     /*
         Returns the following data for debugging range beacon fusion from the specified instance
         An out of range instance (eg -1) returns data for the primary instance
@@ -514,5 +517,6 @@ private:
     void Log_Write_NKF4(uint8_t core, LogMessages msg_id, uint64_t time_us) const;
     void Log_Write_NKF5(uint64_t time_us) const;
     void Log_Write_Quaternion(uint8_t core, LogMessages msg_id, uint64_t time_us) const;
+    void Log_Write_EKFOF(uint8_t core, LogMessages msg_id, uint64_t time_us) const;
     void Log_Write_Beacon(uint64_t time_us) const;
 };
