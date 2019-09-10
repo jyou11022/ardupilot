@@ -1232,6 +1232,14 @@ void NavEKF2::getFlowDebug(int8_t instance, float &varFlow, float &gndOffset, fl
     }
 }
 
+// return data for debugging optical flow fusion
+void NavEKF2::getFlowEKF(int8_t instance, Vector2f &flowRadXY, Vector2f &flowRadXYcomp, Vector3f &bodyRadXYZ) const
+{
+    if (core) {
+        core[instance].getFlowEKF(flowRadXY, flowRadXYcomp, bodyRadXYZ);
+    }
+}
+
 // return data for debugging range beacon fusion
 bool NavEKF2::getRangeBeaconDebug(int8_t instance, uint8_t &ID, float &rng, float &innov, float &innovVar, float &testRatio, Vector3f &beaconPosNED, float &offsetHigh, float &offsetLow) const
 {
