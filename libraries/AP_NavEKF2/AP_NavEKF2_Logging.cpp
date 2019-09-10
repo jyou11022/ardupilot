@@ -179,6 +179,27 @@ void NavEKF2::Log_Write_NKF5(uint64_t time_us) const
     AP::logger().WriteBlock(&pkt5, sizeof(pkt5));
 }
 
+//Extra Log for OF+EKF Dev
+void NavEKF2::Log_Write_EKFOF(uint8_t _core, LogMessages msg_id, uint64_t time_us) const
+{
+    Vector2f flowRadXY;
+    Vector2f flowRadXYcomp;
+    Vector3f bodyRadXYZ;
+    getFlowEKF(_core,flowRadXY, flowRadXYcomp, bodyRadXYZ);
+    const struct log_EKFOF pkt6{
+        LOG_PACKET_HEADER_INIT(msg_id),
+        time_us : time_us,
+        fRadX : (float)(flowRadXY.x),
+        fRadY : (float)(flowRadXY.y),
+        fRadXcomp : (float)(flowRadXYcomp.x),
+        fRadycomp : (float)(flowRadXYcomp.y),
+        bRadX : (float)(bodyRadXYZ.x),
+        bRadY : (float)(bodyRadXYZ.y),
+        bRadZ : (float)(bodyRadXYZ.z),
+     };
+    AP::logger().WriteBlock(&pkt6, sizeof(pkt6));
+}
+
 void NavEKF2::Log_Write_Quaternion(uint8_t _core, LogMessages msg_id, uint64_t time_us) const
 {
     // log quaternion
@@ -246,6 +267,7 @@ void NavEKF2::Log_Write()
     Log_Write_NKF4(0, LOG_NKF4_MSG, time_us);
     Log_Write_NKF5(time_us);
     Log_Write_Quaternion(0, LOG_NKQ1_MSG, time_us);
+    Log_Write_EKFOF(0, LOG_EKFOF1_MSG, time_us);
 
     // log EKF state info for the second EFK core if enabled
     if (activeCores() >= 2) {
@@ -254,6 +276,7 @@ void NavEKF2::Log_Write()
         Log_Write_NKF3(1, LOG_NKF8_MSG, time_us);
         Log_Write_NKF4(1, LOG_NKF9_MSG, time_us);
         Log_Write_Quaternion(1, LOG_NKQ2_MSG, time_us);
+        Log_Write_EKFOF(1, LOG_EKFOF2_MSG, time_us);
     }
 
     // log EKF state info for the third EFK core if enabled
@@ -263,6 +286,7 @@ void NavEKF2::Log_Write()
         Log_Write_NKF3(2, LOG_NKF13_MSG, time_us);
         Log_Write_NKF4(2, LOG_NKF14_MSG, time_us);
         Log_Write_Quaternion(2, LOG_NKQ3_MSG, time_us);
+        Log_Write_EKFOF(2, LOG_EKFOF3_MSG, time_us);
     }
 
     // write range beacon fusion debug packet if the range value is non-zero
