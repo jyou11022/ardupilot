@@ -349,9 +349,6 @@ void AP_UAVCAN::SRV_send_actuator(void)
 
 void AP_UAVCAN::SRV_send_esc(void)
 {
-
-    static uint8_t counter = 0;
-
     static const int cmd_max = uavcan::equipment::esc::RawCommand::FieldTypes::cmd::RawValueType::max();
     uavcan::equipment::esc::RawCommand esc_msg;
 
@@ -381,15 +378,6 @@ void AP_UAVCAN::SRV_send_esc(void)
 
                 scaled = constrain_float(scaled, 0, cmd_max);
 
-                //debug
-                if (i == 1) {
-                    if (counter > 250 && scaled != 0) {
-                        counter = 0;
-                        gcs().send_text(MAV_SEVERITY_CRITICAL, "ESC: %.8g  Pulse: %.4g", scaled, hal.rcout->scale_esc_to_unity(_SRV_conf[i].pulse));
-                    }
-                }
-
-
                 esc_msg.cmd.push_back(static_cast<int>(scaled));
             } else {
                 esc_msg.cmd.push_back(static_cast<unsigned>(0));
@@ -400,9 +388,6 @@ void AP_UAVCAN::SRV_send_esc(void)
 
         esc_raw[_driver_index]->broadcast(esc_msg);
     }
-
-    //debug
-    counter++;
 }
 
 void AP_UAVCAN::SRV_push_servos()
