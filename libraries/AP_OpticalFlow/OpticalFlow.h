@@ -119,7 +119,8 @@ private:
     AP_Vector3f _pos_offset;        // position offset of the flow sensor in the body frame
     AP_Int8  _address;              // address on the bus (allows selecting between 8 possible I2C addresses for px4flow)
     AP_Int8  _extra;                // number of extra OF sensors
-    AP_Int16  _tiltAngle_cd;          // tilt angle of the extra OF sensors
+    AP_Int16  _tiltAngle_cd;        // tilt angle of the extra OF sensors
+    AP_Int8  _nav_ind;              // Instance of EKF 
 
     // method called by backend to update frontend state:
     void update_state(const OpticalFlow_state &state);
