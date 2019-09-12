@@ -86,7 +86,7 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_ADDR", 5,  OpticalFlow, _address,   0),
 
-    // @Param: _ADDITIONAL
+    // @Param: _EXTRA
     // @DisplayName: Optical flow additional sensors
     // @Description: This indicates the number of additional optical flow sensors. Setting this to Disabled(0) will disable additional optical flow.
     // @Values: 0:Disabled, 1:Enabled
@@ -100,6 +100,13 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @Increment: 1
     // @User: Standard
     AP_GROUPINFO("_ORIENT_TILT", 7,  OpticalFlow,    _tiltAngle_cd,   0),
+
+    // @Param: _NAV_IND
+    // @DisplayName: Optical flow navigation indication
+    // @Description: This indicates the optical flow sensor used for EKF.
+    // @Values: 0:Disabled, 1:Enabled
+    // @User: Standard
+    AP_GROUPINFO("_NAV_IND", 8,  OpticalFlow,    _nav_ind, 0),
 
     AP_GROUPEND
 };
@@ -235,8 +242,8 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
         _last_update_ms = AP_HAL::millis();
     
         AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                           _state[instance].flowRate,
-                                           _state[instance].bodyRate,
+                                           _state[_nav_ind].flowRate,
+                                           _state[_nav_ind].bodyRate,
                                            _last_update_ms,
                                            get_pos_offset());
         Log_Write_Optflow(0);
