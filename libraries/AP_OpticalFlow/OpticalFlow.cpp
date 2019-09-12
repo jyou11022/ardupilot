@@ -104,9 +104,16 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @Param: _NAV_IND
     // @DisplayName: Optical flow navigation indication
     // @Description: This indicates the optical flow sensor used for EKF.
-    // @Values: 0:Disabled, 1:Enabled
+    // @Values: 0:First, 1:Second
     // @User: Standard
     AP_GROUPINFO("_NAV_IND", 8,  OpticalFlow,    _nav_ind, 0),
+
+    // @Param: _TESTING
+    // @DisplayName: Optical flow tesing disable/enable
+    // @Description: This allows different flow reading into to one of the core. (3rd core (IMU2) used for flow calculation)
+    // @Values: 0:Disabled, 1:Enabled
+    // @User: Standard
+    AP_GROUPINFO("_TESTING", 9,  OpticalFlow,    _testing, 0),
 
     AP_GROUPEND
 };
@@ -241,12 +248,31 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
             states_new[i] = false;
         }
         _last_update_ms = AP_HAL::millis();
-    
-        AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                           _state[_nav_ind].flowRate,
-                                           _state[_nav_ind].bodyRate,
-                                           _last_update_ms,
-                                           get_pos_offset(),-1);
+        
+        if (_testing == 0) {
+            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[_nav_ind].flowRate,
+                                               _state[_nav_ind].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),-1);
+        } else {
+            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[_nav_ind].flowRate,
+                                               _state[_nav_ind].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),0);
+            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[_nav_ind].flowRate,
+                                               _state[_nav_ind].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),1);
+            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[-_nav_ind+1].flowRate,
+                                               _state[-_nav_ind+1].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),2);
+
+        }
         Log_Write_Optflow(0);
         Log_Write_Optflow(1);
     }
