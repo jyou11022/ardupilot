@@ -215,10 +215,11 @@ void OpticalFlow::update_state(const OpticalFlow_state &state)
                                        _state[0].flowRate,
                                        _state[0].bodyRate,
                                        _last_update_ms,
-                                       get_pos_offset());
+                                       get_pos_offset(),-1);
     Log_Write_Optflow(0);
 
 }
+
 void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance)
 {
 
@@ -245,7 +246,7 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                            _state[_nav_ind].flowRate,
                                            _state[_nav_ind].bodyRate,
                                            _last_update_ms,
-                                           get_pos_offset());
+                                           get_pos_offset(),-1);
         Log_Write_Optflow(0);
         Log_Write_Optflow(1);
     }
