@@ -64,6 +64,14 @@ void NavEKF3_core::getFlowDebug(float &varFlow, float &gndOffset, float &flowInn
     gndOffsetErr = sqrtf(Popt); // note Popt is constrained to be non-negative in EstimateTerrainOffset()
 }
 
+// return extra OF data used for EKF
+void NavEKF3_core::getFlowEKF(Vector2f &flowRadXY, Vector2f &flowRadXYcomp, Vector3f &bodyRadXYZ) const
+{
+    flowRadXY = ofDataNew.flowRadXY;
+    flowRadXYcomp = ofDataNew.flowRadXYcomp;
+    bodyRadXYZ = ofDataNew.bodyRadXYZ;
+}
+
 // return data for debugging body frame odometry fusion
 uint32_t NavEKF3_core::getBodyFrameOdomDebug(Vector3f &velInnov, Vector3f &velInnovVar)
 {

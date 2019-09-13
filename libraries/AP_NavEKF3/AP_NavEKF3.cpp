@@ -1265,6 +1265,14 @@ void NavEKF3::getFlowDebug(int8_t instance, float &varFlow, float &gndOffset, fl
     }
 }
 
+// return data for debugging optical flow fusion
+void NavEKF3::getFlowEKF(int8_t instance, Vector2f &flowRadXY, Vector2f &flowRadXYcomp, Vector3f &bodyRadXYZ) const
+{
+    if (core) {
+        core[instance].getFlowEKF(flowRadXY, flowRadXYcomp, bodyRadXYZ);
+    }
+}
+
 /*
  * Write body frame linear and angular displacement measurements from a visual odometry sensor
  *
