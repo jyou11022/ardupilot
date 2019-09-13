@@ -516,6 +516,7 @@ private:
     void Log_Write_NKF3(uint8_t core, LogMessages msg_id, uint64_t time_us) const;
     void Log_Write_NKF4(uint8_t core, LogMessages msg_id, uint64_t time_us) const;
     void Log_Write_NKF5(uint64_t time_us) const;
+    void Log_Write_NKF5a(uint8_t core, LogMessages msg_id, uint64_t time_us) const;
     void Log_Write_Quaternion(uint8_t core, LogMessages msg_id, uint64_t time_us) const;
     void Log_Write_EKFOF(uint8_t core, LogMessages msg_id, uint64_t time_us) const;
     void Log_Write_Beacon(uint64_t time_us) const;
