@@ -208,6 +208,9 @@ public:
     // return data for debugging optical flow fusion
     void getFlowDebug(float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnov, float &HAGL, float &rngInnov, float &range, float &gndOffsetErr) const;
 
+    // return extra OF data used for EKF
+    void getFlowEKF(Vector2f &flowRadXY, Vector2f &flowRadXYcomp, Vector3f &bodyRadXYZ) const;
+    
     /*
      * Write body frame linear and angular displacement measurements from a visual odometry sensor
      *
