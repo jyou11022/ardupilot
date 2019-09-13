@@ -193,7 +193,7 @@ void NavEKF2::Log_Write_NKF5a(uint8_t _core, LogMessages msg_id, uint64_t time_u
     Vector3f predictorErrors; // output predictor angle, velocity and position tracking error
     getFlowDebug(_core,normInnov, gndOffset, flowInnovX, flowInnovY, auxFlowInnov, HAGL, rngInnov, range, gndOffsetErr);
     getOutputTrackingError(_core,predictorErrors);
-    const struct log_NKF5a pkt6{
+    const struct log_NKF5 pkt6{
         LOG_PACKET_HEADER_INIT(msg_id),
         time_us : time_us,
         normInnov : (uint8_t)(MIN(100*normInnov,255)),
