@@ -598,23 +598,6 @@ struct PACKED log_NKF5 {
     float posErr;
 };
 
-struct PACKED log_NKF5a {
-    LOG_PACKET_HEADER;
-    uint64_t time_us;
-    uint8_t normInnov;
-    int16_t FIX;
-    int16_t FIY;
-    int16_t AFI;
-    int16_t HAGL;
-    int16_t offset;
-    int16_t RI;
-    uint16_t meaRng;
-    uint16_t errHAGL;
-    float angErr;
-    float velErr;
-    float posErr;
-};
-
 //Custom MSG - OF from EKF
 struct PACKED log_EKFOF {
     LOG_PACKET_HEADER;
@@ -1509,12 +1492,18 @@ struct PACKED log_Arm_Disarm {
       "XKV1","Qffffffffffff","TimeUS,V00,V01,V02,V03,V04,V05,V06,V07,V08,V09,V10,V11", "s------------", "F------------" }, \
     { LOG_XKV2_MSG, sizeof(log_ekfStateVar), \
       "XKV2","Qffffffffffff","TimeUS,V12,V13,V14,V15,V16,V17,V18,V19,V20,V21,V22,V23", "s------------", "F------------" }, \
-    { LOG_NOF1_MSG, sizeof(log_NKF5a), \
+    { LOG_NOF1_MSG, sizeof(log_NKF5), \
       "NOF1","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
-    { LOG_NOF2_MSG, sizeof(log_NKF5a), \
+    { LOG_NOF2_MSG, sizeof(log_NKF5), \
       "NOF2","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
-    { LOG_NOF3_MSG, sizeof(log_NKF5a), \
+    { LOG_NOF3_MSG, sizeof(log_NKF5), \
       "NOF3","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
+    { LOG_XOF1_MSG, sizeof(log_NKF5), \
+      "XOF1","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
+    { LOG_XOF2_MSG, sizeof(log_NKF5), \
+      "XOF2","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
+    { LOG_XOF3_MSG, sizeof(log_NKF5), \
+      "XOF3","QBhhhcccCCfff","TimeUS,NI,FIX,FIY,AFI,HAGL,offset,RI,rng,Herr,eAng,eVel,ePos", "s----m???mrnm", "F----BBBBB000" }, \
     { LOG_EKFOF1_MSG, sizeof(log_EKFOF), \
       "EOF1","Qfffffff","TimeUS,fX,fY,fcX,fcY,bX,bY,bZ", "sEEEEEEE", "F0000000" }, \
     { LOG_EKFOF2_MSG, sizeof(log_EKFOF), \
@@ -1693,6 +1682,9 @@ enum LogMessages : uint8_t {
     LOG_NOF1_MSG,
     LOG_NOF2_MSG,
     LOG_NOF3_MSG,
+    LOG_XOF1_MSG,
+    LOG_XOF2_MSG,
+    LOG_XOF3_MSG,
     LOG_EKFOF1_MSG,
     LOG_EKFOF2_MSG,
     LOG_EKFOF3_MSG,
