@@ -191,7 +191,7 @@ void NavEKF3::Log_Write_NKF5a(uint8_t _core, LogMessages msg_id, uint64_t time_u
     Vector3f predictorErrors; // output predictor angle, velocity and position tracking error
     getFlowDebug(_core,normInnov, gndOffset, flowInnovX, flowInnovY, auxFlowInnov, HAGL, rngInnov, range, gndOffsetErr);
     getOutputTrackingError(_core,predictorErrors);
-    const struct log_NKF5a pkt6{
+    const struct log_NKF5 pkt6{
         LOG_PACKET_HEADER_INIT(msg_id),
         time_us : time_us,
         normInnov : (uint8_t)(MIN(100*normInnov,255)),
@@ -363,7 +363,7 @@ void NavEKF3::Log_Write()
     Log_Write_NKF3(0, LOG_XKF3_MSG, time_us);
     Log_Write_NKF4(0, LOG_XKF4_MSG, time_us);
     Log_Write_NKF5(time_us);
-    Log_Write_NKF5a(0, LOG_NOF1_MSG, time_us);
+    Log_Write_NKF5a(0, LOG_XOF1_MSG, time_us);
     Log_Write_Quaternion(0, LOG_XKQ1_MSG, time_us);
     Log_Write_EKFOF(0, LOG_EKFOF1_MSG, time_us);
 
@@ -373,7 +373,7 @@ void NavEKF3::Log_Write()
         Log_Write_NKF2a(1, LOG_XKF7_MSG, time_us);
         Log_Write_NKF3(1, LOG_XKF8_MSG, time_us);
         Log_Write_NKF4(1, LOG_XKF9_MSG, time_us);
-        Log_Write_NKF5a(1, LOG_NOF2_MSG, time_us);
+        Log_Write_NKF5a(1, LOG_XOF2_MSG, time_us);
         Log_Write_Quaternion(1, LOG_XKQ2_MSG, time_us);
         Log_Write_EKFOF(1, LOG_EKFOF2_MSG, time_us);
     }
@@ -384,7 +384,7 @@ void NavEKF3::Log_Write()
         Log_Write_NKF2a(2, LOG_XKF12_MSG, time_us);
         Log_Write_NKF3(2, LOG_XKF13_MSG, time_us);
         Log_Write_NKF4(2, LOG_XKF14_MSG, time_us);
-        Log_Write_NKF5a(2, LOG_NOF3_MSG, time_us);
+        Log_Write_NKF5a(2, LOG_XOF3_MSG, time_us);
         Log_Write_Quaternion(2, LOG_XKQ3_MSG, time_us);
         Log_Write_EKFOF(2, LOG_EKFOF3_MSG, time_us);
     }
