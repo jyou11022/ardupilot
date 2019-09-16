@@ -131,6 +131,7 @@ private:
     struct OpticalFlow_state _state[OPTICALFLOW_MAX_INSTANCES];
 
     uint32_t _last_update_ms;        // millis() time of last update
+    uint32_t _debug_switching_ms;        // millis() time of last update
     uint8_t num_instances;           // number of sensors
 
     void Log_Write_Optflow(uint8_t instance);

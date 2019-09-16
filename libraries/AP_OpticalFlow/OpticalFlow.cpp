@@ -11,6 +11,8 @@
 #include <stdio.h> // debug
 #include <AP_HAL/AP_HAL.h> //debug
 #include <AP_BoardConfig/AP_BoardConfig_CAN.h> // debug
+#include <GCS_MAVLink/GCS.h>
+
 
 extern const AP_HAL::HAL& hal;
 
@@ -128,6 +130,8 @@ OpticalFlow::OpticalFlow()
 
 void OpticalFlow::init(uint32_t log_bit)
 {
+    _debug_switching_ms = AP_HAL::millis();;
+
     hal.console->printf("Starting HereFlow\n");
      _log_bit = log_bit;
      num_instances = _extra+1;
@@ -275,6 +279,11 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
         }
         Log_Write_Optflow(0);
         Log_Write_Optflow(1);
+    }
+    if (_last_update_ms -_debug_switching_ms > 20000) {
+        _nav_ind = -_nav_ind+1;
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "OF Switched to %i", _nav_ind);
+        _debug_switching_ms = _last_update_ms;
     }
 }
 
