@@ -74,6 +74,7 @@ public:
 
     // quality - returns the surface quality as a measure from 0 ~ 255
     uint8_t quality() const { return _state[0].surface_quality; }
+    uint8_t quality2(uint8_t inst) const { return _state[inst].surface_quality; }
 
     // raw - returns the raw movement from the sensor
     const Vector2f& flowRate() const { return _state[0].flowRate; }
@@ -104,6 +105,10 @@ private:
 
     bool states_new[OPTICALFLOW_MAX_INSTANCES];
     bool all_true;
+    Vector2f flowFused;
+    Vector2f bodyFused;
+    float ratio;
+
 
     OpticalFlow_backend *backend[OPTICALFLOW_MAX_INSTANCES];
 
