@@ -91,41 +91,41 @@ OpticalFlow::OpticalFlow(AP_AHRS_NavEKF &ahrs)
 
 void OpticalFlow::init(void)
 {
+
     // return immediately if not enabled
     if (!_enabled) {
         return;
     }
 
     if (!backend) {
-#if AP_FEATURE_BOARD_DETECT
-        if (AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_PIXHAWK ||
-            AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_PIXHAWK2 ||
-            AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_PCNC1) {
-            // possibly have pixhart on external SPI
-            backend = AP_OpticalFlow_Pixart::detect("pixartflow", *this);
-        }
-        if (AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_SP01) {
-            backend = AP_OpticalFlow_Pixart::detect("pixartPC15", *this);
-        }
-        if (backend == nullptr) {
-            // backend = AP_OpticalFlow_PX4Flow::detect(*this);
-            backend = AP_OpticalFlow_HereFlow::probe(*this);
-        }
-#elif CONFIG_HAL_BOARD == HAL_BOARD_SITL
-        backend = new AP_OpticalFlow_SITL(*this);
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
-        backend = new AP_OpticalFlow_Onboard(*this);
-#elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
-        backend = AP_OpticalFlow_PX4Flow::detect(*this);
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
-        backend = AP_OpticalFlow_Pixart::detect("pixartflow", *this);
-#endif
-        if (backend == nullptr) {
-            backend = AP_OpticalFlow_CXOF::detect(*this);
-        }
-// #if HAL_WITH_UAVCAN
-//         backend = AP_OpticalFlow_HereFlow::probe(*this);
-// #endif   
+// #if AP_FEATURE_BOARD_DETECT
+//         if (AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_PIXHAWK ||
+//             AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_PIXHAWK2 ||
+//             AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_PCNC1) {
+//             // possibly have pixhart on external SPI
+//             backend = AP_OpticalFlow_Pixart::detect("pixartflow", *this);
+//         }
+//         if (AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_SP01) {
+//             backend = AP_OpticalFlow_Pixart::detect("pixartPC15", *this);
+//         }
+//         if (backend == nullptr) {
+//             backend = AP_OpticalFlow_PX4Flow::detect(*this);
+//         }
+// #elif CONFIG_HAL_BOARD == HAL_BOARD_SITL
+//         backend = new AP_OpticalFlow_SITL(*this);
+// #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
+//         backend = new AP_OpticalFlow_Onboard(*this);
+// #elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
+//         backend = AP_OpticalFlow_PX4Flow::detect(*this);
+// #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412
+//         backend = AP_OpticalFlow_Pixart::detect("pixartflow", *this);
+// #endif
+//         if (backend == nullptr) {
+//             backend = AP_OpticalFlow_CXOF::detect(*this);
+//         }
+#if HAL_WITH_UAVCAN
+        backend = AP_OpticalFlow_HereFlow::probe(*this);
+#endif   
     }
     if (backend != nullptr) {
         backend->init();

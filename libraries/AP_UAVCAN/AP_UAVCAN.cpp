@@ -426,6 +426,12 @@ AP_UAVCAN::AP_UAVCAN() :
         _mag_node_max_sensorid_count[i] = 1;
     }
 
+    //HereFlow
+    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
+        _flow_nodes[i] = UINT8_MAX;
+        _flow_node_taken[i] = 0;
+    }
+
     for (uint8_t i = 0; i < AP_UAVCAN_MAX_LISTENERS; i++) {
         _gps_listener_to_node[i] = UINT8_MAX;
         _gps_listeners[i] = nullptr;
@@ -436,6 +442,9 @@ AP_UAVCAN::AP_UAVCAN() :
         _mag_listener_to_node[i] = UINT8_MAX;
         _mag_listeners[i] = nullptr;
         _mag_listener_sensor_ids[i] = 0;
+
+        _flow_listener_to_node[i] = UINT8_MAX;
+        _flow_listeners[i] = nullptr;
     }
 
     for (uint8_t i = 0; i < AP_UAVCAN_MAX_BI_NUMBER; i++) {
@@ -1488,7 +1497,7 @@ uint8_t AP_UAVCAN::register_flow_listener(OpticalFlow_backend* new_listener, uin
     if (sel_place == UINT8_MAX) {
         return 0;
     }
-    if (preferred_channel != 0 && preferred_channel < AP_UAVCAN_MAX_BARO_NODES) {
+    if (preferred_channel != 0 && preferred_channel < AP_UAVCAN_MAX_FLOW_NODES) {
         _flow_listeners[sel_place] = new_listener;
         _flow_listener_to_node[sel_place] = preferred_channel - 1;
         _flow_node_taken[_flow_listener_to_node[sel_place]]++;
@@ -1496,7 +1505,7 @@ uint8_t AP_UAVCAN::register_flow_listener(OpticalFlow_backend* new_listener, uin
 
         debug_uavcan(2, "reg_flow place:%d, chan: %d\n\r", sel_place, preferred_channel);
     } else {
-        for (uint8_t i = 0; i < AP_UAVCAN_MAX_BARO_NODES; i++) {
+        for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
             if (_flow_node_taken[i] == 0) {
                 _flow_listeners[sel_place] = new_listener;
                 _flow_listener_to_node[sel_place] = i;
@@ -1524,7 +1533,7 @@ uint8_t AP_UAVCAN::register_flow_listener_to_node(OpticalFlow_backend* new_liste
     }
 
     if (sel_place != UINT8_MAX) {
-        for (uint8_t i = 0; i < AP_UAVCAN_MAX_BARO_NODES; i++) {
+        for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
             if (_flow_nodes[i] != node) {
                 continue;
             }

@@ -5,6 +5,9 @@
 #include "AP_OpticalFlow_HereFlow.h"
 #include "OpticalFlow.h"
 
+
+#include <GCS_MAVLink/GCS.h>
+
 #include <AP_BoardConfig/AP_BoardConfig.h>
 #include <AP_BoardConfig/AP_BoardConfig_CAN.h>
 
@@ -58,6 +61,7 @@ AP_OpticalFlow_HereFlow::~AP_OpticalFlow_HereFlow()
 
 OpticalFlow_backend *AP_OpticalFlow_HereFlow::probe(OpticalFlow &flow)
 {
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "HereFlow Initialized");
     if (AP_BoardConfig_CAN::get_can_num_ifaces() == 0) {
         return nullptr;
     }
@@ -69,7 +73,11 @@ OpticalFlow_backend *AP_OpticalFlow_HereFlow::probe(OpticalFlow &flow)
         if (ap_uavcan == nullptr) {
             continue;
         }
-        uint8_t freeflow = ap_uavcan->find_smallest_free_flow_node();
+        //uint8_t freeflow = ap_uavcan->find_smallest_free_flow_node();
+        uint8_t freeflow = 40;
+
+        hal.console->printf("Flow Node ID: %d\n",freeflow);
+        //uint8_t freeflow = 40;
         if (freeflow == UINT8_MAX) {
             continue;
         }
@@ -139,7 +147,9 @@ void AP_OpticalFlow_HereFlow::handle_flow_msg(Vector2f flowRate, Vector2f bodyRa
         _integral_time = integral_time;
         new_data = true;
         //_last_timestamp = AP_HAL::micros64();
+        //hal.console->printf("Quality Data %d\n",_surface_quality);
         _sem_flow->give();
+
     }
 }
 
@@ -172,8 +182,12 @@ void AP_OpticalFlow_HereFlow::update()
 // Read the sensor
 void AP_OpticalFlow_HereFlow::_push_state(void)
 {
-    if (_sem_flow->take(HAL_SEMAPHORE_BLOCK_FOREVER) && !new_data) {
-        struct OpticalFlow::OpticalFlow_state state {};
+    // static uint8_t counter = 0;
+    // counter++;
+
+    //if (_sem_flow->take(HAL_SEMAPHORE_BLOCK_FOREVER) && !new_data) {
+    if (new_data) {    
+        struct OpticalFlow::OpticalFlow_state state;
         const Vector2f flowScaler = _flowScaler();
         //setup scaling based on parameters
         float flowScaleFactorX = 1.0f + 0.001f * flowScaler.x;
@@ -189,8 +203,14 @@ void AP_OpticalFlow_HereFlow::_push_state(void)
         _applyYaw(state.bodyRate);
         // hal.console->printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
         _update_frontend(state);
+
+        // if (counter > 50) {
+        // counter = 0;
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "Flow %.5f", _flowRate.x);
+        // }
+
         new_data = false;
-        _sem_flow->give();
+        //_sem_flow->give();
     }
 }
 
