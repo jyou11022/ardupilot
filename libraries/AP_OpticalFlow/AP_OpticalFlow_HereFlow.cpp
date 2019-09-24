@@ -3,6 +3,7 @@
 #if HAL_WITH_UAVCAN
 
 #include "AP_OpticalFlow_HereFlow.h"
+#include "OpticalFlow.h"
 
 #include <AP_BoardConfig/AP_BoardConfig.h>
 #include <AP_BoardConfig/AP_BoardConfig_CAN.h>
@@ -16,6 +17,7 @@ extern const AP_HAL::HAL& hal;
 
 #define debug_flow_uavcan(level, fmt, args...) do { if ((level) <= AP_BoardConfig_CAN::get_can_debug()) { printf(fmt, ##args); }} while (0)
 
+uint8_t AP_OpticalFlow_HereFlow::_node_id = 40;
 //#define debug_flow_uavcan(level_debug, can_driver, fmt, args...) do { if ((level_debug) <= AP::can().get_debug_level_driver(can_driver)) { hal.console->printf(fmt, ##args); }} while (0)
 
 //UAVCAN Frontend Registry Binder
@@ -31,6 +33,10 @@ AP_OpticalFlow_HereFlow::AP_OpticalFlow_HereFlow(OpticalFlow &flow) :
     OpticalFlow_backend(flow)
 {
     _sem_flow = hal.util->new_semaphore();
+
+    // if (_driver) {
+    //     AP_HAL::panic("Only one instance of Flow supported!");
+    // }
 }
 
 AP_OpticalFlow_HereFlow::~AP_OpticalFlow_HereFlow()
@@ -45,7 +51,7 @@ AP_OpticalFlow_HereFlow::~AP_OpticalFlow_HereFlow()
     }
     
     ap_uavcan->remove_flow_listener(this);
-    delete _sem_baro;
+    delete _sem_flow;
     
     debug_flow_uavcan(2, "AP_OpticalFlow_HereFlow destructed\n\r");
 }
@@ -124,19 +130,20 @@ OpticalFlow_backend *AP_OpticalFlow_HereFlow::probe(OpticalFlow &flow)
 // }
 
 
-void AP_OpticalFlow_HereFlow::handle_flow_msg(fVector2f flowRate, Vector2f bodyRate, uint8_t  surface_quality, float integral_time)
+void AP_OpticalFlow_HereFlow::handle_flow_msg(Vector2f flowRate, Vector2f bodyRate, uint8_t  surface_quality, float integral_time)
 {
     if (_sem_flow->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
         _flowRate = flowRate;
         _bodyRate = bodyRate;
         _surface_quality = surface_quality;
         _integral_time = integral_time;
+        new_data = true;
         //_last_timestamp = AP_HAL::micros64();
         _sem_flow->give();
     }
 }
 
-bool AP_Baro_UAVCAN::register_uavcan_flow(uint8_t mgr, uint8_t node)
+bool AP_OpticalFlow_HereFlow::register_uavcan_flow(uint8_t mgr, uint8_t node)
 {
     AP_UAVCAN *ap_uavcan = AP_UAVCAN::get_uavcan(mgr);
     if (ap_uavcan == nullptr) {
@@ -145,7 +152,7 @@ bool AP_Baro_UAVCAN::register_uavcan_flow(uint8_t mgr, uint8_t node)
     _manager = mgr;
 
     if (ap_uavcan->register_flow_listener_to_node(this, node)) {
-        _instance = _frontend.register_sensor();
+        //_instance = _frontend.register_sensor();
         debug_flow_uavcan(2, "AP_OpticalFlow_HereFlow loaded\n\r");
 
         _initialized = true;
@@ -165,26 +172,26 @@ void AP_OpticalFlow_HereFlow::update()
 // Read the sensor
 void AP_OpticalFlow_HereFlow::_push_state(void)
 {
-    WITH_SEMAPHORE(_sem);
-    if (!new_data) {
-        return;
+    if (_sem_flow->take(HAL_SEMAPHORE_BLOCK_FOREVER) && !new_data) {
+        struct OpticalFlow::OpticalFlow_state state {};
+        const Vector2f flowScaler = _flowScaler();
+        //setup scaling based on parameters
+        float flowScaleFactorX = 1.0f + 0.001f * flowScaler.x;
+        float flowScaleFactorY = 1.0f + 0.001f * flowScaler.y;
+        float integralToRate = 1.0f / _integral_time;
+        //Convert to Raw Flow measurement to Flow Rate measurement
+        state.device_id = _node_id;
+        state.flowRate = Vector2f(_flowRate.x * flowScaleFactorX,
+                                    _flowRate.y * flowScaleFactorY) * integralToRate;
+        state.bodyRate = _bodyRate * integralToRate;
+        state.surface_quality = _surface_quality;
+        _applyYaw(state.flowRate);
+        _applyYaw(state.bodyRate);
+        // hal.console->printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
+        _update_frontend(state);
+        new_data = false;
+        _sem_flow->give();
     }
-    struct OpticalFlow::OpticalFlow_state state;
-    const Vector2f flowScaler = _flowScaler();
-    //setup scaling based on parameters
-    float flowScaleFactorX = 1.0f + 0.001f * flowScaler.x;
-    float flowScaleFactorY = 1.0f + 0.001f * flowScaler.y;
-    float integralToRate = 1.0f / integral_time;
-    //Convert to Raw Flow measurement to Flow Rate measurement
-    state.flowRate = Vector2f(flowRate.x * flowScaleFactorX,
-                                flowRate.y * flowScaleFactorY) * integralToRate;
-    state.bodyRate = bodyRate * integralToRate;
-    state.surface_quality = surface_quality;
-    _applyYaw(state.flowRate);
-    _applyYaw(state.bodyRate);
-    // hal.console->printf("DRV: %u %f %f\n", state.surface_quality, flowRate.length(), bodyRate.length());
-    _update_frontend(state);
-    new_data = false;
 }
 
 #endif // HAL_WITH_UAVCAN

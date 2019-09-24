@@ -386,9 +386,9 @@ static void flow_cb(const uavcan::ReceivedDataStructure<com::hex::equipment::flo
 }
 
 static void flow_cb0(const uavcan::ReceivedDataStructure<com::hex::equipment::flow::Measurement>& msg)
-{   air_data_sp_cb(msg, 0); }
+{   flow_cb(msg, 0); }
 static void flow_cb1(const uavcan::ReceivedDataStructure<com::hex::equipment::flow::Measurement>& msg)
-{   air_data_sp_cb(msg, 1); }
+{   flow_cb(msg, 1); }
 static void (*flow_cb_arr[2])(const uavcan::ReceivedDataStructure<com::hex::equipment::flow::Measurement>& msg)
         = { flow_cb0, flow_cb1 };
 
@@ -446,7 +446,7 @@ AP_UAVCAN::AP_UAVCAN() :
     }
 
     //HereFlow
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NUMBER; i++) {
+    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
         _flow_nodes[i] = UINT8_MAX;
         _flow_node_taken[i] = 0;
     }
@@ -587,7 +587,7 @@ bool AP_UAVCAN::try_init(void)
     const int flow_listener_res = flow_listener->start(flow_cb_arr[_uavcan_i]);
     if (flow_listener_res < 0) {
         AP_HAL::panic("UAVCAN Flow subscriber start problem\n\r");
-        return;
+        return false;
     }
 
 
@@ -1473,12 +1473,51 @@ bool AP_UAVCAN::led_write(uint8_t led_index, uint8_t red, uint8_t green, uint8_t
 
 
 //HereFlow
+
+uint8_t AP_UAVCAN::register_flow_listener(OpticalFlow_backend* new_listener, uint8_t preferred_channel)
+{
+    uint8_t sel_place = UINT8_MAX, ret = 0;
+
+    for (uint8_t i = 0; i < AP_UAVCAN_MAX_LISTENERS; i++) {
+        if (_flow_listeners[i] == nullptr) {
+            sel_place = i;
+            break;
+        }
+    }
+
+    if (sel_place == UINT8_MAX) {
+        return 0;
+    }
+    if (preferred_channel != 0 && preferred_channel < AP_UAVCAN_MAX_BARO_NODES) {
+        _flow_listeners[sel_place] = new_listener;
+        _flow_listener_to_node[sel_place] = preferred_channel - 1;
+        _flow_node_taken[_flow_listener_to_node[sel_place]]++;
+        ret = preferred_channel;
+
+        debug_uavcan(2, "reg_flow place:%d, chan: %d\n\r", sel_place, preferred_channel);
+    } else {
+        for (uint8_t i = 0; i < AP_UAVCAN_MAX_BARO_NODES; i++) {
+            if (_flow_node_taken[i] == 0) {
+                _flow_listeners[sel_place] = new_listener;
+                _flow_listener_to_node[sel_place] = i;
+                _flow_node_taken[i]++;
+                ret = i + 1;
+
+                debug_uavcan(2, "reg_FLOW place:%d, chan: %d\n\r", sel_place, i);
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
+
 uint8_t AP_UAVCAN::register_flow_listener_to_node(OpticalFlow_backend* new_listener, uint8_t node)
 {
     uint8_t sel_place = UINT8_MAX, ret = 0;
 
     for (uint8_t i = 0; i < AP_UAVCAN_MAX_LISTENERS; i++) {
-        if (_baro_listeners[i] == nullptr) {
+        if (_flow_listeners[i] == nullptr) {
             sel_place = i;
             break;
         }
@@ -1518,6 +1557,21 @@ void AP_UAVCAN::remove_flow_listener(OpticalFlow_backend* rem_listener)
         _flow_listener_to_node[i] = UINT8_MAX;
     }
 }
+
+
+uint8_t AP_UAVCAN::find_smallest_free_flow_node()
+{
+    uint8_t ret = UINT8_MAX;
+
+    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
+        if (_flow_node_taken[i] == 0) {
+            ret = MIN(ret, _flow_nodes[i]);
+        }
+    }
+
+    return ret;
+}
+
 
 AP_UAVCAN::Flow_Info *AP_UAVCAN::find_flow_node(uint8_t node)
 {

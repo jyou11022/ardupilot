@@ -15,6 +15,7 @@
 #include <AP_GPS/GPS_Backend.h>
 #include <AP_Baro/AP_Baro_Backend.h>
 #include <AP_Compass/AP_Compass.h>
+#include <AP_OpticalFlow/OpticalFlow_backend.h>
 #include <AP_BattMonitor/AP_BattMonitor_Backend.h>
 
 #include <uavcan/helpers/heap_based_pool_allocator.hpp>
@@ -127,10 +128,12 @@ public:
         uint8_t surface_quality;
         float integral_time;
         bool new_data;
-    }
+    };
+    uint8_t register_flow_listener(OpticalFlow_backend* new_listener, uint8_t preferred_channel);
     uint8_t register_flow_listener_to_node(OpticalFlow_backend* new_listener, uint8_t node);
     void remove_flow_listener(OpticalFlow_backend* rem_listener);
     Flow_Info *find_flow_node(uint8_t node);
+    uint8_t find_smallest_free_flow_node();
     void update_flow_state(uint8_t node);
 
 
