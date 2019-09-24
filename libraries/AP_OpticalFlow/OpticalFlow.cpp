@@ -6,6 +6,13 @@
 #include "AP_OpticalFlow_PX4Flow.h"
 #include "AP_OpticalFlow_CXOF.h"
 
+
+#if HAL_WITH_UAVCAN
+#include <AP_BoardConfig/AP_BoardConfig_CAN.h>
+#include <AP_UAVCAN/AP_UAVCAN.h>
+#include "AP_OpticalFlow_HereFlow.h"
+#endif
+
 extern const AP_HAL::HAL& hal;
 
 const AP_Param::GroupInfo OpticalFlow::var_info[] = {
@@ -101,7 +108,8 @@ void OpticalFlow::init(void)
             backend = AP_OpticalFlow_Pixart::detect("pixartPC15", *this);
         }
         if (backend == nullptr) {
-            backend = AP_OpticalFlow_PX4Flow::detect(*this);
+            // backend = AP_OpticalFlow_PX4Flow::detect(*this);
+            backend = AP_OpticalFlow_HereFlow::probe(*this);
         }
 #elif CONFIG_HAL_BOARD == HAL_BOARD_SITL
         backend = new AP_OpticalFlow_SITL(*this);
@@ -115,8 +123,10 @@ void OpticalFlow::init(void)
         if (backend == nullptr) {
             backend = AP_OpticalFlow_CXOF::detect(*this);
         }
+// #if HAL_WITH_UAVCAN
+//         backend = AP_OpticalFlow_HereFlow::probe(*this);
+// #endif   
     }
-
     if (backend != nullptr) {
         backend->init();
     }
