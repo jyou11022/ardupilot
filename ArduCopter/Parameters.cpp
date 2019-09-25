@@ -1015,8 +1015,8 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(user_parameters, "USR", 41, ParametersG2, UserParameters),
 #endif
 
-    AP_GROUPINFO("NV_CR_FS_TIME", 40, ParametersG2, cr_fs_time_s, 5),
-    AP_GROUPINFO("NV_ATT_FS_TIME", 41, ParametersG2, att_fs_time_s, 3),
+    AP_GROUPINFO("NV_CR_FS_TIME", 42, ParametersG2, cr_fs_time_s, 5),
+    AP_GROUPINFO("NV_ATT_FS_TIME", 43, ParametersG2, att_fs_time_s, 3),
 
     AP_GROUPEND
 };
