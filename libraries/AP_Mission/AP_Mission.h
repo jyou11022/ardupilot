@@ -40,6 +40,13 @@
 #define AP_MISSION_OPTIONS_DEFAULT          0       // Do not clear the mission when rebooting
 #define AP_MISSION_MASK_MISSION_CLEAR       (1<<0)  // If set then Clear the mission on boot
 
+#define AP_MISSION_WAITFORGPS               51000
+#define AP_MISSION_TRANSITION               51100
+#define AP_MISSION_STOP_MOTORS              50001
+#define AP_MISSION_UW_THROTTLE              51101
+#define AP_MISSION_UW_ALTITUDE              51102
+#define AP_MISSION_UW_ATTITUDE              51001
+
 /// @class    AP_Mission
 /// @brief    Object managing Mission
 class AP_Mission {
@@ -192,6 +199,35 @@ public:
         float release_rate;     // release rate in meters/second
     };
 
+    /**********************************************************************************************************
+     * NV custom commands
+     *********************************************************************************************************/
+
+    //test command
+    struct PACKED WaitForGPS_Command{
+        uint8_t unused;
+    };
+
+    struct PACKED Transition_Command{
+        float height;
+    };
+
+    struct PACKED UW_Throttle_Command{
+        float target_throttle;
+        float delay;
+    };
+
+    struct PACKED UW_Altitude_Command{
+        float target_altitude;
+    };
+
+    //angles in centidegrees
+    struct PACKED UW_Attitude_Command{
+        int16_t roll;
+        int16_t pitch;
+        int16_t yaw_rate;
+    };
+
     union PACKED Content {
         // jump structure
         Jump_Command jump;
@@ -255,6 +291,16 @@ public:
 
         // do-winch
         Winch_Command winch;
+
+        //////////////////////////////////////////////////////////////////
+    
+        WaitForGPS_Command wait_gps;
+        
+        Transition_Command transition;
+
+        UW_Throttle_Command uw_throttle;
+        UW_Altitude_Command uw_altitude;
+        UW_Attitude_Command uw_attitude;
 
         // location
         Location location;      // Waypoint location
@@ -348,6 +394,9 @@ public:
 
     /// check mission starts with a takeoff command
     bool starts_with_takeoff_cmd();
+
+    /// check if mission requires uw baro
+    bool has_uw_baro_cmd();
 
     /// reset - reset mission to the first command
     void reset();

@@ -40,6 +40,7 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
     AP_GROUPINFO("YAW_HEADROOM", 6, AP_MotorsMulticopter, _yaw_headroom, AP_MOTORS_YAW_HEADROOM_DEFAULT),
 
     // 7 was THR_LOW_CMP
+    AP_GROUPINFO("NV_WAT_ALPHA", 7, AP_MotorsMulticopter, _nv_water_alpha, 0.2),
 
     // @Param: THST_EXPO
     // @DisplayName: Thrust Curve Expo
@@ -183,6 +184,11 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("BAT_IDX",  39, AP_MotorsMulticopter,  _batt_idx, 0),
 
+    AP_GROUPINFO("PWM_MIN_WTR", 40, AP_MotorsMulticopter, _pwm_min_water, 1055),
+    AP_GROUPINFO("PWM_MAX_WTR", 41, AP_MotorsMulticopter, _pwm_max_water, 1295),
+    AP_GROUPINFO("PWM_MIN_AIR", 42, AP_MotorsMulticopter, _pwm_min_air, 1355),
+    AP_GROUPINFO("PWM_MAX_AIR", 43, AP_MotorsMulticopter, _pwm_max_air, 1860),
+
     AP_GROUPEND
 };
 
@@ -208,6 +214,7 @@ AP_MotorsMulticopter::AP_MotorsMulticopter(uint16_t loop_rate, uint16_t speed_hz
     // default throttle range
     _throttle_radio_min = 1100;
     _throttle_radio_max = 1900;
+
 };
 
 // output - sends commands to the motors

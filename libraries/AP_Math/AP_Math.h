@@ -159,6 +159,11 @@ inline int64_t constrain_int64(const int64_t amt, const int64_t low, const int64
     return constrain_value(amt, low, high);
 }
 
+inline float map_float(float x, float in_min, float in_max, float out_min, float out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 // degrees -> radians
 static inline constexpr float radians(float deg)
 {

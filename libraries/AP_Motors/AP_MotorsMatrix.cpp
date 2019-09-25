@@ -90,13 +90,6 @@ void AP_MotorsMatrix::output_to_motors()
             break;
         }
         case SPIN_WHEN_ARMED:
-            // sends output to motors when armed but not flying
-            for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
-                if (motor_enabled[i]) {
-                    motor_out[i] = calc_spin_up_to_pwm();
-                }
-            }
-            break;
         case SPOOL_UP:
         case THROTTLE_UNLIMITED:
         case SPOOL_DOWN:
@@ -104,6 +97,50 @@ void AP_MotorsMatrix::output_to_motors()
             for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
                 if (motor_enabled[i]) {
                     motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i]);
+
+                    // naviator additional mout processing
+                    double mtemp;
+                    double mtemp2;
+                    int16_t mout;
+
+                    // if motor in water, then output only between 1025->1300
+                    //   while avoiding endpoint deadzones, ie. up to 1295
+                    if (motor_medium[i] == MOTORS_WATER)
+                    {
+                        // scale the desired output to the water range
+                        mtemp = _pwm_min_water + (_pwm_max_water-_pwm_min_water) * ((double)motor_out[i] - (double)get_pwm_output_min()) / ((double)get_pwm_output_max() - (double)get_pwm_output_min());
+                        // apply a moving average based on the NV_WATER_ALPHA parameter
+                        mtemp2 = _nv_water_alpha * mtemp + (1.0 - _nv_water_alpha) * motor_output[i];
+                        // constrain the output to acceptable water range
+                        mout = constrain_int16((int16_t)mtemp2, _pwm_min_water, _pwm_max_water);
+                        // if the motor mininum is capped at the lowest active throttle, then reconstrain
+                        if(motor_min_enable && mout < _pwm_min_water) mout = _pwm_min_water;
+                    }
+                    // if motor in water, then output only between 1300->1860
+                    //   while avoiding water mode, ie. starting at 1310
+                    else if (motor_medium[i] == MOTORS_AIR)
+                    {
+                        // scale the desired output to the air range
+                        mtemp = _pwm_min_air + (_pwm_max_air - _pwm_min_air) * ((double)motor_out[i] - (double)get_pwm_output_min())  /  ((double)get_pwm_output_max() - (double)get_pwm_output_min());
+                        // constrain the output to acceptable air range
+                        mout = constrain_int16((int16_t)mtemp, _pwm_min_air, _pwm_max_air);
+                    }
+                    // if motor is set to off, then set the minimum ESC pwm, at the low deadzone
+                    else if (motor_medium[i] == MOTORS_OFF)
+                    {
+                        mout = _pwm_min_water - 25;
+                    }
+                    // else if regular mode (not multi-medium), then output full range as usual
+                    else
+                    {
+                        // leave the motor output alone, but scale it to our full range
+                        mout = (int16_t)map_float(motor_out[i], (float)get_pwm_output_min(), (float)get_pwm_output_max(), _pwm_min_water, _pwm_max_air);
+                    }
+                                        
+                    // make the intended motor output publicly available (naviator)
+                    motor_output[i] = mout;
+                    motor_out[i] = mout;
+
                 }
             }
             break;
@@ -468,15 +505,6 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
                     add_motor(AP_MOTORS_MOT_6,-150, AP_MOTORS_MATRIX_YAW_FACTOR_CW,  4);
                     success = true;
                     break;
-                case MOTOR_FRAME_TYPE_H:
-                    // H is same as X except middle motors are closer to center
-                    add_motor_raw(AP_MOTORS_MOT_1, -1.0f, 0.0f, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 2);
-                    add_motor_raw(AP_MOTORS_MOT_2, 1.0f, 0.0f, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 5);
-                    add_motor_raw(AP_MOTORS_MOT_3, 1.0f, 1.0f, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 6);
-                    add_motor_raw(AP_MOTORS_MOT_4, -1.0f, -1.0f, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 3);
-                    add_motor_raw(AP_MOTORS_MOT_5, -1.0f, 1.0f, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 1);
-                    add_motor_raw(AP_MOTORS_MOT_6, 1.0f, -1.0f, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 4);
-                    success = true;
                 default:
                     // hexa frame class does not support this frame type
                     break;

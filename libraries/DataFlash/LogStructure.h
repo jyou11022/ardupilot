@@ -298,6 +298,7 @@ struct PACKED log_RCIN {
     uint16_t chan12;
     uint16_t chan13;
     uint16_t chan14;
+    uint16_t ch6_noise;
 };
 
 struct PACKED log_RCOUT {
@@ -832,10 +833,12 @@ struct PACKED log_Esc {
     LOG_PACKET_HEADER;
     uint64_t time_us;     
     int32_t rpm;
-    uint16_t voltage;
-    uint16_t current;
+    float voltage;
+    float current;
     int16_t temperature;
     uint16_t current_tot;
+    int8_t is_underwater;
+    int meas_kv;
 };
 
 struct PACKED log_AIRSPEED {
@@ -1064,6 +1067,10 @@ struct PACKED log_DSTL {
     float D;
 };
 
+/****************************************************************************************************
+ * NAVIATOR LOG STRUCTS
+ ******************************************************************************************************/
+
 // #endif // SBP_HW_LOGGING
 
 // FMT messages define all message formats other than FMT
@@ -1081,10 +1088,10 @@ struct PACKED log_DSTL {
 #define BARO_UNITS "smPOnsmO"
 #define BARO_MULTS "F00B0C?0"
 
-#define ESC_LABELS "TimeUS,RPM,Volt,Curr,Temp,CTot"
-#define ESC_FMT   "QeCCcH"
-#define ESC_UNITS "sqvAO-"
-#define ESC_MULTS "FBBBB-"
+#define ESC_LABELS "TimeUS,RPM,Volt,Curr,Temp,CTot,isUW,kV"
+#define ESC_FMT   "QiffhHbi"
+#define ESC_UNITS "sqvAO---"
+#define ESC_MULTS "F????-??"
 
 #define GPA_LABELS "TimeUS,VDop,HAcc,VAcc,SAcc,VV,SMS,Delta"
 #define GPA_FMT   "QCCCCBIH"
@@ -1205,7 +1212,7 @@ Format characters in the format string for binary log messages
     { LOG_MESSAGE_MSG, sizeof(log_Message), \
       "MSG",  "QZ",     "TimeUS,Message", "s-", "F-"}, \
     { LOG_RCIN_MSG, sizeof(log_RCIN), \
-      "RCIN",  "QHHHHHHHHHHHHHH",     "TimeUS,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14", "sUUUUUUUUUUUUUU", "F--------------" }, \
+      "RCIN",  "QHHHHHHHHHHHHHHH",     "TimeUS,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14, C6Noise", "sUUUUUUUUUUUUUUU", "F---------------" }, \
     { LOG_RCOUT_MSG, sizeof(log_RCOUT), \
       "RCOU",  "QHHHHHHHHHHHHHH",     "TimeUS,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14", "sUUUUUUUUUUUUUU", "F--------------"  }, \
     { LOG_RSSI_MSG, sizeof(log_RSSI), \

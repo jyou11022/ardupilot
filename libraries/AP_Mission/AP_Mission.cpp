@@ -143,6 +143,16 @@ bool AP_Mission::starts_with_takeoff_cmd()
         if (!get_next_nav_cmd(cmd_index, cmd)) {
             return false;
         }
+
+        //is NV custom takeoff command
+        if (cmd.id >= 50000){
+            if (cmd.id == AP_MISSION_WAITFORGPS
+            || cmd.id == AP_MISSION_STOP_MOTORS){
+                    continue;
+            }
+            return (cmd.id >= 50100 && cmd.id < 50200) || (cmd.id >= 51100 && cmd.id < 51200);
+        }
+
         switch (cmd.id) {
         // any of these are considered a takeoff command:
         case MAV_CMD_NAV_TAKEOFF:
@@ -150,10 +160,42 @@ bool AP_Mission::starts_with_takeoff_cmd()
             return true;
         // any of these are considered "skippable" when determining if
         // we "start with a takeoff command"
+        case AP_MISSION_WAITFORGPS:
         case MAV_CMD_NAV_DELAY:
+        case AP_MISSION_STOP_MOTORS:
             continue;
         default:
             return false;
+        }
+    }
+    return false;
+}
+
+bool AP_Mission::has_uw_baro_cmd(){
+
+    Mission_Command cmd = {};
+    uint16_t cmd_index = _restart ? AP_MISSION_CMD_INDEX_NONE : _nav_cmd.index;
+    if (cmd_index == AP_MISSION_CMD_INDEX_NONE) {
+        cmd_index = AP_MISSION_FIRST_REAL_COMMAND;
+    }
+
+    // check a maximum of 50 items, remembering that missions can have
+    // loops in them
+    for (uint8_t i=0; i<50; i++, cmd_index++) {
+        if (!get_next_nav_cmd(cmd_index, cmd)) {
+            return false;
+        }
+
+        //is NV custom takeoff command
+        if (cmd.id >= 50000){
+            //ignore if NV cmd that doesn't require barometer
+            if (cmd.id == AP_MISSION_WAITFORGPS
+            || cmd.id == AP_MISSION_STOP_MOTORS
+            || cmd.id == AP_MISSION_UW_ATTITUDE){
+                    continue;
+            }
+            //return an NV takeoff command
+            return true;
         }
     }
     return false;
@@ -297,7 +339,7 @@ bool AP_Mission::replace_cmd(uint16_t index, Mission_Command& cmd)
 bool AP_Mission::is_nav_cmd(const Mission_Command& cmd)
 {
     // NAV commands all have ids below MAV_CMD_NAV_LAST except NAV_SET_YAW_SPEED
-    return (cmd.id <= MAV_CMD_NAV_LAST || cmd.id == MAV_CMD_NAV_SET_YAW_SPEED);
+    return (cmd.id <= MAV_CMD_NAV_LAST || cmd.id == MAV_CMD_NAV_SET_YAW_SPEED || (cmd.id >= 51000 && cmd.id < 52000));
 }
 
 /// get_next_nav_cmd - gets next "navigation" command found at or after start_index
@@ -871,6 +913,36 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
         cmd.content.winch.release_rate = packet.param4; // release rate in meters/second
         break;
 
+    case AP_MISSION_WAITFORGPS:
+        gcs().send_text(MAV_SEVERITY_INFO, "Found mission: waitforgps");
+        break;
+
+    case AP_MISSION_TRANSITION:
+        gcs().send_text(MAV_SEVERITY_INFO, "Found mission: transition");
+        cmd.content.transition.height = packet.param1;
+        break;
+
+    case AP_MISSION_STOP_MOTORS:
+        gcs().send_text(MAV_SEVERITY_INFO, "Found mission: stop motors");
+        cmd.content.delay.seconds = packet.param1;
+        break;
+
+    case AP_MISSION_UW_THROTTLE:
+        gcs().send_text(MAV_SEVERITY_INFO, "Found mission: uw throttle");
+        cmd.content.uw_throttle.target_throttle = packet.param1;
+        cmd.content.uw_throttle.delay = packet.param2;
+        break;
+    case AP_MISSION_UW_ALTITUDE:
+        gcs().send_text(MAV_SEVERITY_INFO, "Found mission: uw altitude");
+        cmd.content.uw_altitude.target_altitude = packet.param1;
+        break;
+    case AP_MISSION_UW_ATTITUDE:
+        gcs().send_text(MAV_SEVERITY_INFO, "Found mission: uw attitude");
+        cmd.content.uw_attitude.roll = packet.param1;
+        cmd.content.uw_attitude.pitch = packet.param2;
+        cmd.content.uw_attitude.yaw_rate = packet.param3;
+        break;
+
     default:
         // unrecognised command
         return MAV_MISSION_UNSUPPORTED;
@@ -1325,6 +1397,32 @@ bool AP_Mission::mission_cmd_to_mavlink_int(const AP_Mission::Mission_Command& c
         packet.param2 = cmd.content.winch.action;           // action (0 = relax, 1 = length control, 2 = rate control).  See WINCH_ACTION enum
         packet.param3 = cmd.content.winch.release_length;   // cable distance to unwind in meters, negative numbers to wind in cable
         packet.param4 = cmd.content.winch.release_rate;     // release rate in meters/second
+        break;
+    
+    case AP_MISSION_WAITFORGPS:
+        break;
+
+    case AP_MISSION_TRANSITION:
+        packet.param1 = cmd.content.transition.height;
+        break;
+
+    case AP_MISSION_STOP_MOTORS:
+        packet.param1 = cmd.content.delay.seconds;
+        break;
+
+    case AP_MISSION_UW_THROTTLE:
+        packet.param1 = cmd.content.uw_throttle.target_throttle;
+        packet.param2 = cmd.content.uw_throttle.delay;
+        break;
+
+    case AP_MISSION_UW_ALTITUDE:
+        packet.param1 = cmd.content.uw_altitude.target_altitude;
+        break;
+
+    case AP_MISSION_UW_ATTITUDE:
+        packet.param1 = cmd.content.uw_attitude.roll;
+        packet.param2 = cmd.content.uw_attitude.pitch;
+        packet.param3 = cmd.content.uw_attitude.yaw_rate;
         break;
 
     default:

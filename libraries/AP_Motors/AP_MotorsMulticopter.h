@@ -165,6 +165,13 @@ protected:
     AP_Int8             _throttle_hover_learn;  // enable/disabled hover thrust learning
     AP_Int8             _disarm_disable_pwm;    // disable PWM output while disarmed
 
+    // naviator parameters
+    AP_Float            _nv_water_alpha;
+    AP_Int32            _pwm_min_water;
+    AP_Int32            _pwm_max_water;
+    AP_Int32            _pwm_min_air;
+    AP_Int32            _pwm_max_air;
+
     // Maximum lean angle of yaw servo in degrees. This is specific to tricopter
     AP_Float            _yaw_servo_angle_max_deg;
 
@@ -192,4 +199,7 @@ protected:
 
     // vehicle supplied callback for thrust compensation. Used for tiltrotors and tiltwings
     thrust_compensation_fn_t _thrust_compensation_callback;
+
+    // naviator methods
+    float               get_alpha(void){ return _nv_water_alpha; };
 };

@@ -23,6 +23,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <SRV_Channel/SRV_Channel.h>
 #include <GCS_MAVLink/GCS.h>
+#include <DataFlash/DataFlash.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -59,6 +60,13 @@ AP_Motors::AP_Motors(uint16_t loop_rate, uint16_t speed_hz) :
     limit.yaw = true;
     limit.throttle_lower = true;
     limit.throttle_upper = true;
+
+    // naviator vars --> set defaults
+    motor_min_enable = false;
+    motor_min = 1055;
+    for (int i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
+        motor_medium[i] = MOTORS_REGULAR; // default to reg
+    }
 };
 
 void AP_Motors::armed(bool arm)
@@ -175,4 +183,105 @@ void AP_Motors::add_motor_num(int8_t motor_num)
             gcs().send_text(MAV_SEVERITY_ERROR, "Motors: unable to setup motor %u", motor_num);
         }
     }
+}
+
+void AP_Motors::update_esc_state(int index, float voltage, float current, float temperature, int rpm, bool senses_water, int meas_kv){
+    if (AP_HAL::millis() - esc_status_states[index].last_reading_ms > 3000){
+        gcs().send_text(MAV_SEVERITY_INFO, "Found esc %d", index);
+    }
+
+    esc_status_states[index].voltage = voltage;
+    esc_status_states[index].current = current;
+    esc_status_states[index].temperature = temperature;
+    esc_status_states[index].rpm = rpm;
+    esc_status_states[index].is_underwater = senses_water;
+    esc_status_states[index].meas_kv = meas_kv;
+    esc_status_states[index].last_reading_ms = AP_HAL::millis();
+}
+
+void AP_Motors::Log_Write_ESCs(){
+    uint32_t tnow = AP_HAL::millis();
+    for(uint8_t i = 0; i<8; i++){
+        if (tnow - esc_status_states[i].last_reading_ms < 3000){
+            DataFlash_Class::instance()->Log_Write_ESC(
+                i+1,
+                esc_status_states[i].voltage,
+                esc_status_states[i].current,
+                esc_status_states[i].temperature,
+                esc_status_states[i].rpm,
+                esc_status_states[i].is_underwater,
+                esc_status_states[i].meas_kv);
+        }
+    }
+}
+
+float AP_Motors::get_voltage(){
+    float sum = 0;
+    int count = 0;
+
+    uint32_t tnow = AP_HAL::millis();
+
+    for(int i=0; i<8; i++){
+        if (esc_status_states[i].voltage > 3 && tnow-esc_status_states[i].last_reading_ms < 3000){
+            sum += esc_status_states[i].voltage;
+            count ++;
+        } 
+    }
+    return sum / count;
+}
+float AP_Motors::get_current(){
+    float sum = 0;
+
+    uint32_t tnow = AP_HAL::millis();
+
+    for(int i=0; i<8; i++){
+        if (tnow - esc_status_states[i].last_reading_ms < 3000){
+            sum += esc_status_states[i].current;
+        }
+    }
+
+    return sum;
+}
+
+bool AP_Motors::control_state_water(){
+    for(uint8_t i=0; i<4; i++){
+        if(motor_medium[i] == MOTORS_AIR){
+           return false;
+        }
+    }
+    return true;
+} 
+
+bool AP_Motors::is_underwater(){
+    return top_is_underwater() || bot_is_underwater();
+}
+
+bool AP_Motors::top_is_underwater(){
+    uint32_t tnow = AP_HAL::millis();    
+
+    for(int i=0; i<4; i++){
+        if ((tnow - esc_status_states[i].last_reading_ms < 3000 && esc_status_states[i].is_underwater) || motor_medium[i] == MOTORS_WATER) return true;
+    }
+    return false;
+}
+
+bool AP_Motors::bot_is_underwater(){
+    uint32_t tnow = AP_HAL::millis();
+
+    for(int i=4; i<8; i++){
+        if ((tnow - esc_status_states[i].last_reading_ms < 3000 && esc_status_states[i].is_underwater) || motor_medium[i] == MOTORS_WATER) return true;
+    }
+    return false;
+}
+
+uint8_t AP_Motors::ESC_unhealthy(){
+    uint32_t tnow = AP_HAL::millis();
+    //if any ESC hasn't responded in the past 3 seconds, it's probably dead
+    for(uint8_t i=0; i<8; i++){
+        if (tnow - esc_status_states[i].last_reading_ms > 3000){
+            return i+1;
+        }
+    }
+    //if passed all ESCs, default to true
+    return 0;
 }

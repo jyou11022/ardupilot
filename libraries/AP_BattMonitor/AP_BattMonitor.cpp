@@ -9,6 +9,7 @@
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 #include <DataFlash/DataFlash.h>
 #include <GCS_MAVLink/GCS.h>
+#include <AP_Motors/AP_Motors_Class.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -318,17 +319,20 @@ void AP_BattMonitor::check_failsafes(void)
                 continue;
             }
 
+            if (_params[i]._failsafe_low_action_air > 5) _params[i]._failsafe_low_action_air = 1;
+            if (_params[i]._failsafe_critical_action_air > 5) _params[i]._failsafe_critical_action_air = 1;
+
             int8_t action = 0;
             const char *type_str = nullptr;
             switch (type) {
                 case AP_BattMonitor::BatteryFailsafe_None:
                     continue; // should not have been called in this case
                 case AP_BattMonitor::BatteryFailsafe_Low:
-                    action = _params[i]._failsafe_low_action;
+                    action = (AP_Motors::get_instance()->is_underwater() || AP_Motors::get_instance()->control_state_water()) ? _params[i]._failsafe_low_action_water: _params[i]._failsafe_low_action_air;
                     type_str = "low";
                     break;
                 case AP_BattMonitor::BatteryFailsafe_Critical:
-                    action = _params[i]._failsafe_critical_action;
+                    action = (AP_Motors::get_instance()->is_underwater() || AP_Motors::get_instance()->control_state_water()) ? _params[i]._failsafe_critical_action_water : _params[i]._failsafe_critical_action_air;
                     type_str = "critical";
                     break;
             }

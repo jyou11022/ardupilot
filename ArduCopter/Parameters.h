@@ -587,6 +587,30 @@ public:
     AP_Follow follow;
 #endif
 
+#ifdef USER_PARAMS_ENABLED
+    // User custom parameters
+    UserParameters user_parameters;
+#endif
+
+    //AP_Float transition_throttle;
+    AP_Float transition_height;
+    AP_Float trans_goalrt;
+    AP_Float trans_climbrt;
+    AP_Float buoy_throttle;
+
+    AP_Int8 failsafe_throttle_water;
+    AP_Float buoy_delay;
+
+    AP_Float nv_ap_pid_z_kP; // p gain
+    AP_Float nv_ap_pid_z_kD; // d gain
+    AP_Float nv_ap_pid_z_C;  // compensation throttle
+    AP_Int16 water_angle_max;
+    AP_Int16 air_angle_max;
+
+    AP_Float trans_max_angle;
+
+    AP_Int8 cr_fs_time_s;
+    AP_Int8 att_fs_time_s;
 };
 
 extern const AP_Param::Info        var_info[];

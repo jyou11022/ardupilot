@@ -48,12 +48,36 @@ void AP_BattMonitor_UAVCAN::init()
 // read - read the voltage and current
 void AP_BattMonitor_UAVCAN::read()
 {
-    uint32_t tnow = AP_HAL::micros();
+/*    uint32_t tnow = AP_HAL::micros();
 
     // timeout after 5 seconds
     if ((tnow - _state.last_time_micros) > AP_BATTMONITOR_UAVCAN_TIMEOUT_MICROS) {
         _state.healthy = false;
     }
+*/
+
+    //use esc_status messages to read voltage and current
+    _state.voltage = AP_Motors::get_instance()->get_voltage();
+
+    if (_state.voltage < 3){
+        _state.healthy = false;
+        return;
+    }
+    else{
+        _state.healthy = true;
+    }
+
+    _state.current_amps = AP_Motors::get_instance()->get_current();
+
+    uint32_t dt = AP_HAL::micros() - _state.last_time_micros;
+    if (_state.last_time_micros != 0 && dt < 2000000){
+        // .0002778 is 1/3600 (conversion to hours)
+        float mah = (float) ((double) _state.current_amps * (double) dt * (double) 0.0000002778f);
+        _state.consumed_mah += mah;
+        _state.consumed_wh  += 0.001f * mah * _state.voltage;
+    }
+    _state.last_time_micros = AP_HAL::micros();
+    
 }
 
 void AP_BattMonitor_UAVCAN::handle_bi_msg(float voltage, float current, float temperature)

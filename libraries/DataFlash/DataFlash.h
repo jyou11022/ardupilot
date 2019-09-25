@@ -128,6 +128,7 @@ public:
     void Log_Write_Camera(const AP_AHRS &ahrs, const Location &current_loc);
     void Log_Write_Trigger(const AP_AHRS &ahrs, const Location &current_loc);
     void Log_Write_ESC(void);
+    void Log_Write_ESC(int16_t i, float voltage, float current, int16_t temperature, int16_t rpm, bool is_underwater, int16_t meas_kv);
     void Log_Write_Airspeed(AP_Airspeed &airspeed);
     void Log_Write_Attitude(AP_AHRS &ahrs, const Vector3f &targets);
     void Log_Write_AttitudeView(AP_AHRS_View &ahrs, const Vector3f &targets);

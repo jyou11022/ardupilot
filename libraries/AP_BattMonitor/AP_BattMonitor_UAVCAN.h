@@ -1,6 +1,7 @@
 #pragma once
 
 #include <AP_UAVCAN/AP_UAVCAN.h>
+#include <AP_Motors/AP_Motors_Class.h>
 #include "AP_BattMonitor.h"
 #include "AP_BattMonitor_Backend.h"
 
@@ -30,4 +31,5 @@ public:
 
 protected:
     BattMonitor_UAVCAN_Type _type;
+    AP_Motors* motors;
 };

@@ -22,6 +22,7 @@
 #include <cmath>
 
 #include <AP_HAL/AP_HAL.h>
+#include <GCS_MAVLink/GCS.h>
 extern const AP_HAL::HAL& hal;
 
 #include <AP_Math/AP_Math.h>
@@ -31,6 +32,10 @@ extern const AP_HAL::HAL& hal;
 RC_Channel *RC_Channels::channels;
 bool RC_Channels::has_new_overrides;
 AP_Float *RC_Channels::override_timeout;
+
+uint16_t RC_Channels::prev_ch6_reading = 0;
+uint16_t RC_Channels::ch6_noise = 0;
+uint32_t RC_Channels::last_noise_alert_time_ms = 0;
 
 const AP_Param::GroupInfo RC_Channels::var_info[] = {
     // @Group: 1_
@@ -161,6 +166,15 @@ RC_Channels::read_input(void)
 
     for (uint8_t i=0; i<NUM_RC_CHANNELS; i++) {
         channels[i].set_pwm(channels[i].read());
+    }
+
+    //update ch6 noise, ch6 chosen because as a tuning knob it should never experience large spikes in signal
+    ch6_noise = (ch6_noise * 100 + fabs(hal.rcin->read(5) - prev_ch6_reading))/101;
+    prev_ch6_reading = hal.rcin->read(5);
+
+    if (ch6_noise > 10 && AP_HAL::millis() - last_noise_alert_time_ms > 2000){
+        last_noise_alert_time_ms = AP_HAL::millis();
+        gcs().send_text(MAV_SEVERITY_INFO, "High RC6 spikes detected");
     }
 
     return true;

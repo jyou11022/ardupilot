@@ -14,23 +14,38 @@ void Copter::failsafe_radio_on_event()
     if (should_disarm_on_failsafe()) {
         init_disarm_motors();
     } else {
-        if (control_mode == AUTO && g.failsafe_throttle == FS_THR_ENABLED_CONTINUE_MISSION) {
+        if (control_mode == AUTO && (g.failsafe_throttle == FS_THR_ENABLED_CONTINUE_MISSION || !mode_auto.requires_GPS())) {
             // continue mission
         } else if (control_mode == LAND &&
                    battery.has_failsafed() &&
                    battery.get_highest_failsafe_priority() <= FAILSAFE_LAND_PRIORITY) {
             // continue landing or other high priority failsafes
         } else {
-            if (g.failsafe_throttle == FS_THR_ENABLED_ALWAYS_RTL) {
-                set_mode_RTL_or_land_with_pause(MODE_REASON_RADIO_FAILSAFE);
-            } else if (g.failsafe_throttle == FS_THR_ENABLED_CONTINUE_MISSION) {
-                set_mode_RTL_or_land_with_pause(MODE_REASON_RADIO_FAILSAFE);
-            } else if (g.failsafe_throttle == FS_THR_ENABLED_ALWAYS_SMARTRTL_OR_RTL) {
-                set_mode_SmartRTL_or_RTL(MODE_REASON_RADIO_FAILSAFE);
-            } else if (g.failsafe_throttle == FS_THR_ENABLED_ALWAYS_SMARTRTL_OR_LAND) {
-                set_mode_SmartRTL_or_land_with_pause(MODE_REASON_RADIO_FAILSAFE);
-            } else { // g.failsafe_throttle == FS_THR_ENABLED_ALWAYS_LAND
-                set_mode_land_with_pause(MODE_REASON_RADIO_FAILSAFE);
+            if ((motors->control_state_water() || motors->is_underwater())){
+                gcs().send_text(MAV_SEVERITY_INFO, "FAILSAFE water: %d\n", g2.failsafe_throttle_water);
+                if (g2.failsafe_throttle_water == FS_THR_ENABLED_ALWAYS_DISARM){
+                    init_disarm_motors();
+                }
+                else{
+                    set_mode(LAND, MODE_REASON_RADIO_FAILSAFE);
+                    AP_Notify::events.failsafe_mode_change = 1;
+                }
+            }
+            else{
+                gcs().send_text(MAV_SEVERITY_INFO, "FAILSAFE air: %d\n", g.failsafe_throttle);
+                if (g.failsafe_throttle == FS_THR_ENABLED_ALWAYS_RTL) {
+                    set_mode_RTL_or_land_with_pause(MODE_REASON_RADIO_FAILSAFE);
+                } else if (g.failsafe_throttle == FS_THR_ENABLED_CONTINUE_MISSION) {
+                    set_mode_RTL_or_land_with_pause(MODE_REASON_RADIO_FAILSAFE);
+                } else if (g.failsafe_throttle == FS_THR_ENABLED_ALWAYS_SMARTRTL_OR_RTL) {
+                    set_mode_SmartRTL_or_RTL(MODE_REASON_RADIO_FAILSAFE);
+                } else if (g.failsafe_throttle == FS_THR_ENABLED_ALWAYS_SMARTRTL_OR_LAND) {
+                    set_mode_SmartRTL_or_land_with_pause(MODE_REASON_RADIO_FAILSAFE);
+                } else if (g.failsafe_throttle == FS_THR_ENABLED_ALWAYS_DISARM){
+                    init_disarm_motors(); 
+                }else { // g.failsafe_throttle == FS_THR_ENABLED_ALWAYS_LAND
+                    set_mode_land_with_pause(MODE_REASON_RADIO_FAILSAFE);
+                }
             }
         }
     }
@@ -52,12 +67,15 @@ void Copter::failsafe_radio_off_event()
 
 void Copter::handle_battery_failsafe(const char *type_str, const int8_t action)
 {
+    gcs().send_text(MAV_SEVERITY_INFO, "BATTERY FAILSAFE: %d", action);
+
     Log_Write_Error(ERROR_SUBSYSTEM_FAILSAFE_BATT, ERROR_CODE_FAILSAFE_OCCURRED);
 
     // failsafe check
     if (should_disarm_on_failsafe()) {
         init_disarm_motors();
     } else {
+        //air water decision making should be done in the caller of this function
         switch ((Failsafe_Action)action) {
             case Failsafe_Action_None:
                 return;
@@ -72,6 +90,10 @@ void Copter::handle_battery_failsafe(const char *type_str, const int8_t action)
                 break;
             case Failsafe_Action_SmartRTL_Land:
                 set_mode_SmartRTL_or_land_with_pause(MODE_REASON_BATTERY_FAILSAFE);
+                break;
+            case Failsafe_Action_Buoy:
+                set_mode(BUOY, MODE_REASON_BATTERY_FAILSAFE);
+                AP_Notify::events.failsafe_mode_change = 1;
                 break;
             case Failsafe_Action_Terminate:
 #if ADVANCED_FAILSAFE == ENABLED

@@ -35,9 +35,6 @@ bool Copter::ModeLand::init(bool ignore_checks)
     // reset flag indicating if pilot has applied roll or pitch inputs during landing
     ap.land_repo_active = false;
 
-    // initialise yaw
-    auto_yaw.set_mode(AUTO_YAW_HOLD);
-
     return true;
 }
 
@@ -45,6 +42,20 @@ bool Copter::ModeLand::init(bool ignore_checks)
 // should be called at 100hz or more
 void Copter::ModeLand::run()
 {
+    //if landing in water, buoy to float
+    if (motors->is_underwater()){
+        copter.mode_buoy.run();
+        return;
+    }
+    // else{
+    //     for(int i=0; i<4; i++){
+    //         motors->motor_medium[i] = MOTORS_AIR;
+    //     }
+    //     for (int i=4; i<8; i++){
+    //         motors->motor_medium[i] = MOTORS_WATER;
+    //     }
+    // }
+
     if (land_with_gps) {
         gps_run();
     }else{

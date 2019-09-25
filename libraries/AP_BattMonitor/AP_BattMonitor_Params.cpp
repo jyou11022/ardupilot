@@ -133,7 +133,7 @@ const AP_Param::GroupInfo AP_BattMonitor_Params::var_info[] = {
     // @Values{Rover}: 0:None,1:RTL,2:Hold,3:SmartRTL,4:SmartRTL or Hold,5:Terminate
     // @Values{Tracker}: 0:None
     // @User: Standard
-    AP_GROUPINFO("FS_LOW_ACT", 16, AP_BattMonitor_Params, _failsafe_low_action, 0),
+    AP_GROUPINFO("FS_LOW_ACT", 16, AP_BattMonitor_Params, _failsafe_low_action_air, 0),
 
     // @Param: FS_CRT_ACT
     // @DisplayName: Critical battery failsafe action
@@ -144,7 +144,11 @@ const AP_Param::GroupInfo AP_BattMonitor_Params::var_info[] = {
     // @Values{Rover}: 0:None,1:RTL,2:Hold,3:SmartRTL,4:SmartRTL or Hold,5:Terminate
     // @Values{Tracker}: 0:None
     // @User: Standard
-    AP_GROUPINFO("FS_CRT_ACT", 17, AP_BattMonitor_Params, _failsafe_critical_action, 0),
+    AP_GROUPINFO("FS_CRT_ACT", 17, AP_BattMonitor_Params, _failsafe_critical_action_air, 0),
+
+    AP_GROUPINFO("FS_LOW_WAT", 18, AP_BattMonitor_Params, _failsafe_low_action_water, 6),
+
+    AP_GROUPINFO("FS_CRT_WAT", 19, AP_BattMonitor_Params, _failsafe_critical_action_water, 6),
 
     AP_GROUPEND
 

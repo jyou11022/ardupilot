@@ -170,6 +170,9 @@
 #endif
 
 // Local modules
+#ifdef USER_PARAMS_ENABLED
+#include "UserParameters.h"
+#endif
 #include "Parameters.h"
 #if ADSB_ENABLED == ENABLED
 #include "avoidance_adsb.h"
@@ -633,7 +636,8 @@ private:
         Failsafe_Action_RTL            = 2,
         Failsafe_Action_SmartRTL       = 3,
         Failsafe_Action_SmartRTL_Land  = 4,
-        Failsafe_Action_Terminate      = 5
+        Failsafe_Action_Terminate      = 5,
+        Failsafe_Action_Buoy           = 6
     };
 
     static constexpr int8_t _failsafe_priorities[] = {
@@ -944,6 +948,7 @@ private:
     void userhook_auxSwitch3(uint8_t ch_flag);
 
 #include "mode.h"
+#include "NV_mode.h"
 
     Mode *flightmode;
 #if MODE_ACRO_ENABLED == ENABLED
@@ -1009,6 +1014,13 @@ private:
 #if !HAL_MINIMIZE_FEATURES && OPTFLOW == ENABLED
     ModeFlowHold mode_flowhold;
 #endif
+    
+
+    //NV FLIGHT MODES
+    ModeTransition mode_transition;
+    ModeBuoy mode_buoy;
+    ModeDelayedBuoy mode_delayed_buoy;
+    ModeNV_AUTO mode_nv_auto;
 
     // mode.cpp
     Mode *mode_from_mode_num(const uint8_t mode);

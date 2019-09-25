@@ -268,7 +268,7 @@ public:
     void run() override;
 
     bool is_autopilot() const override { return true; }
-    bool requires_GPS() const override { return true; }
+    bool requires_GPS() const override;
     bool has_manual_throttle() const override { return false; }
     bool allows_arming(bool from_gcs) const override { return false; };
     bool in_guided_mode() const { return mode() == Auto_NavGuided; }
@@ -328,6 +328,8 @@ private:
     void circle_run();
     void nav_guided_run();
     void loiter_run();
+    void nv_auto_run();
+    void stop_motors_run();
 
     void payload_place_start(const Vector3f& destination);
     void payload_place_run();
@@ -374,6 +376,9 @@ private:
 #endif
     void do_payload_place(const AP_Mission::Mission_Command& cmd);
     void do_RTL(void);
+    void do_waitForGPS(const AP_Mission::Mission_Command& cmd);
+    void do_stop_motors(const AP_Mission::Mission_Command& cmd);
+    void do_nv_auto(const AP_Mission::Mission_Command& cmd);
 
     bool verify_takeoff();
     bool verify_land();
@@ -391,6 +396,8 @@ private:
     bool verify_nav_guided_enable(const AP_Mission::Mission_Command& cmd);
 #endif
     bool verify_nav_delay(const AP_Mission::Mission_Command& cmd);
+    bool verify_waitForGPS();
+    bool verify_nv_auto(const AP_Mission::Mission_Command& cmd);
 
     // Loiter control
     uint16_t loiter_time_max;                // How long we should stay in Loiter Mode for mission scripting (time in seconds)

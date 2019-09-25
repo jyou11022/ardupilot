@@ -14,6 +14,10 @@
 #define HAL_BARO_MS5837_I2C_ADDR 0x76
 #endif
 
+// #define MS5837_02BA_OFFSET -11000
+// #define MS5837_02BA_C3 22750
+// #define MS5837_02BA_C1 42870
+
 class AP_Baro_MS56XX : public AP_Baro_Backend
 {
 public:
@@ -23,7 +27,8 @@ public:
         BARO_MS5611 = 0,
         BARO_MS5607 = 1,
         BARO_MS5637 = 2,
-        BARO_MS5837 = 3
+        BARO_MS5837_30 = 3,
+        BARO_MS5837_02 = 4
     };
 
     static AP_Baro_Backend *probe(AP_Baro &baro, AP_HAL::OwnPtr<AP_HAL::Device> dev, enum MS56XX_TYPE ms56xx_type = BARO_MS5611);
@@ -41,12 +46,16 @@ private:
 
     AP_Baro_MS56XX(AP_Baro &baro, AP_HAL::OwnPtr<AP_HAL::Device> dev, enum MS56XX_TYPE ms56xx_type);
 
+    uint8_t _addr_cmd_convert_temperature;
+    uint8_t _addr_cmd_convert_pressure;
+
     bool _init();
 
     void _calculate_5611();
     void _calculate_5607();
     void _calculate_5637();
-    void _calculate_5837();
+    void _calculate_5837_30();
+    void _calculate_5837_02();
     bool _read_prom_5611(uint16_t prom[8]);
     bool _read_prom_5637(uint16_t prom[8]);
 

@@ -29,6 +29,7 @@
 #include <AP_BoardConfig/AP_BoardConfig.h>
 #include <AP_BoardConfig/AP_BoardConfig_CAN.h>
 #include <AP_Vehicle/AP_Vehicle_Type.h>
+#include <AP_Motors/AP_Motors_Class.h>
 
 #include "AP_Baro_SITL.h"
 #include "AP_Baro_BMP085.h"
@@ -142,6 +143,11 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @Range: 0 100
     // @Increment: 1
     AP_GROUPINFO("FLTR_RNG", 13, AP_Baro, _filter_range, HAL_BARO_FILTER_DEFAULT),
+
+    AP_GROUPINFO("CALIB_BUF", 14, AP_Baro, _calibration_buf, 750),
+    AP_GROUPINFO("BAR02_C1", 15, AP_Baro, _ms5837_02_c1, 42870),
+    AP_GROUPINFO("BAR02_C3", 16, AP_Baro, _ms5837_02_c3, 22750),
+    AP_GROUPINFO("BAR02_OFFSET", 17, AP_Baro, _ms5837_02_offset, -11000),
 
     AP_GROUPEND
 };
@@ -281,6 +287,7 @@ float AP_Baro::get_altitude_difference(float base_pressure, float pressure) cons
     // This is an exact calculation that is within +-2.5m of the standard
     // atmosphere tables in the troposphere (up to 11,000 m amsl).
     ret = 153.8462f * temp * (1.0f - expf(0.190259f * logf(scaling)));
+    //ret = 145366.45*0.3048*(1.0f - expf(0.190259f * logf(scaling)));
 
     return ret;
 }
@@ -578,6 +585,7 @@ void AP_Baro::init(void)
 #endif
 
     // can optionally have baro on I2C too
+/*
     if (_ext_bus >= 0) {
 #if APM_BUILD_TYPE(APM_BUILD_ArduSub)
         ADD_BACKEND(AP_Baro_MS56XX::probe(*this,
@@ -602,6 +610,12 @@ void AP_Baro::init(void)
  #endif                                         
 #endif
     }
+*/
+    if (_ext_bus >=0){
+        ADD_BACKEND(AP_Baro_MS56XX::probe(*this,
+                                          std::move(hal.i2c_mgr->get_device(_ext_bus, HAL_BARO_MS5837_I2C_ADDR)), AP_Baro_MS56XX::BARO_MS5837_02));
+    }
+
 
 #if CONFIG_HAL_BOARD != HAL_BOARD_F4LIGHT // most boards requires external baro
 
@@ -645,6 +659,38 @@ void AP_Baro::update(void)
         }
     }
 
+    //set external barometer to change air/water mode with motors
+    if (_num_sensors > 2){
+        //if armed and motors read underwater, use the external barometer as air
+        if (AP_Motors::get_instance()->armed() && !AP_Motors::get_instance()->is_underwater()){
+            if (_cal_buf_count == 0){
+                if(sensors[2].type == BARO_TYPE_WATER){
+                    _cal_buf_count = AP_HAL::millis();
+                    _cal_gnd_press_avg = sensors[2].pressure;
+                }
+                else {
+                    sensors[2].type = BARO_TYPE_AIR;
+                    _cal_buf_count = 0;
+                }
+            } 
+            else if (_cal_buf_count > 0){
+                _cal_gnd_press_avg = (3*_cal_gnd_press_avg + sensors[2].pressure)/4;
+                if (AP_HAL::millis() - _cal_buf_count >= (uint32_t)_calibration_buf){
+                    sensors[2].type = BARO_TYPE_AIR;
+                    sensors[2].ground_pressure = _cal_gnd_press_avg;
+
+                    gcs().send_text(MAV_SEVERITY_INFO, "baro reset");
+                    _cal_buf_count = 0;
+                }
+            }
+        }
+        //if disarmed, use as a water baro
+        else{
+            sensors[2].type = BARO_TYPE_WATER;
+            _cal_buf_count = 0;
+        }
+    }
+
     for (uint8_t i=0; i<_num_sensors; i++) {
         if (sensors[i].healthy) {
             // update altitude calculation
@@ -659,7 +705,7 @@ void AP_Baro::update(void)
             } else if (sensors[i].type == BARO_TYPE_WATER) {
                 //101325Pa is sea level air pressure, 9800 Pascal/ m depth in water.
                 //No temperature or depth compensation for density of water.
-                altitude = (sensors[i].ground_pressure - corrected_pressure) / 9800.0f / _specific_gravity;
+                altitude = get_depth(i);
             }
             // sanity check altitude
             sensors[i].alt_ok = !(isnan(altitude) || isinf(altitude));
@@ -697,6 +743,10 @@ void AP_Baro::update(void)
     if (should_df_log() && !AP::ahrs().have_ekf_logging()) {
         DataFlash_Class::instance()->Log_Write_Baro();
     }
+}
+
+float AP_Baro::get_depth(int i){
+    return (101300 - (sensors[i].pressure + sensors[i].p_correction)) / 9806.65f / _specific_gravity;
 }
 
 /*

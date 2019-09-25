@@ -1,24 +1,64 @@
 ArduPilot Copter Release Notes:
 ------------------------------------------------------------------
-Copter 3.6.11-rc1 16-Sep-2019
-Changes from 3.6.10
-1) EKF and IMU improvements:
-    a) IMU3 enabled by default if present
-    b) IMU3 fast sampling enabled by default on Cube autopilots
-    c) EKF protection against large baro spikes causing attitude error
-    d) EKF origin fixes (consistent across cores, set externally only when not using GPS)
-    e) EKF logging of 3rd core
-2) Minor enhancements:
-    a) Land mode supports heading requests (ie. ROI)
-    b) Support Hexa-H frame
-    c) MatekF405-STD binaries created
-    d) Benewake TFminiPlus lidar support
-3) Bug Fixes
-    a) Barometer health checks include sanity check of temperature
-    b) Lightware serial driver handles invalid distances
-    c) IO firmware fix involving delayed writes to serial ports (ChibiOS only)
-    d) CAN Compass fis to for unintialised device IDs
-    e) mRo x2.1-777 USB ID fix
+Naviator 3.6.10 - 1.8 | 2019-08-07
+
+Desc: Moving existing Naviator capabilities into the existing AUTO mode
+
+1) AUTO mode
+    o) added commands
+          auto_transition:  will climb and transition from water to the altitude
+                              provided by the mission argument
+             wait_for_gps:  continues executing previous action until GPS condition is met,
+                              after which it will move to the next command
+              stop_motors:  sends 1025us to all motors, ie. MOTOR_OFF
+      underwater_throttle:  sends fixed throttle to the motors, provided by the mission argument
+      underwater_altitude:  maintains depth provided by mission argument
+                             (normally coupled with the existing DELAY command)
+    o) "bool requires_GPS() const override { return true; }" redefined inside of AutoMode
+2) TRANSITION Mode and NV_AUTO Mode were expanded so that they could be used with AUTO mode
+------------------------------------------------------------------
+Naviator 3.6.10 - 1.7 | 2019-08-07
+1) Failsafes
+    o) added additional actions for the RADIO FAILSAFE and BATTERY FAILSAFE
+        - Switch to BUOY mode depending on whether it is in water or air,
+          in which case it would switch to LAND or something else.
+------------------------------------------------------------------
+Naviator 3.6.10 - 1.6 | 2019-08-07
+1) Mode
+    o) modified LAND mode to support BUOY action when LAND is executed while in water
+------------------------------------------------------------------
+Naviator 3.6.10 - 1.5 | 2019-08-07
+1) Modes
+    o) added Naviator modes and associated parameters/variables
+2) UserCode
+    o) usercode air-surface-water mode selection updated to reflect new modes
+------------------------------------------------------------------
+Naviator 3.6.10 - 1.4 | 2019-08-07
+1) UserCode
+    o) added support for air-surface-water mode selection using the transmitter CH8 
+------------------------------------------------------------------
+Naviator 3.6.10 - 1.3 | 2019-08-07
+1) Barometer Classes
+    o) modified barometer libraries to support external pressure sensor via I2C and to support air-water operation
+------------------------------------------------------------------
+Naviator 3.6.10 - 1.2 | 2019-08-07
+1) Motors
+    o) Air/Water defines and params added
+    o) Motor output scaling depending on air/water condition
+    o) UAVCAN functionality added
+    o) Water detection via ESC response
+    o) ESC status logging, including current, voltage and air/water status
+    o) added 'map_float' utility function, which is referenced in the MotorMatrix
+------------------------------------------------------------------
+Naviator 3.6.10 - 1.1 | 2019-08-07
+1) Parameters
+    o) default frame set to OctaQuad
+------------------------------------------------------------------
+Naviator 3.6.10 - 1.0 | NVAC V3.6.10 - 1.0 | 2019-08-07
+Changes from 3.6.10-rc2
+1) Designation:
+    a) 3.6.10-rc2 set as new origin for Naviator ArduCopter (NVAC) development
+       Version convention: [Copter Major].[Copter Minor].[Copter Patch] - [Naviator Major].[Naviator Minor]
 ------------------------------------------------------------------
 Copter 3.6.10 29-Jul-2019 / 3.6.10-rc2 2-Jul-2019
 Changes from 3.6.10-rc1

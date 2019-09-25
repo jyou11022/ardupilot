@@ -426,7 +426,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Units: cdeg
     // @Range: 1000 8000
     // @User: Advanced
-    ASCALAR(angle_max, "ANGLE_MAX",                 DEFAULT_ANGLE_MAX),
+    //ASCALAR(angle_max, "ANGLE_MAX",                 DEFAULT_ANGLE_MAX),
 
     // @Param: PHLD_BRAKE_RATE
     // @DisplayName: PosHold braking rate
@@ -914,7 +914,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Values: 0:Undefined, 1:Quad, 2:Hexa, 3:Octa, 4:OctaQuad, 5:Y6, 6:Heli, 7:Tri, 8:SingleCopter, 9:CoaxCopter, 11:Heli_Dual, 12:DodecaHexa, 13:HeliQuad
     // @User: Standard
     // @RebootRequired: True
-    AP_GROUPINFO("FRAME_CLASS", 15, ParametersG2, frame_class, 0),
+    AP_GROUPINFO("FRAME_CLASS", 15, ParametersG2, frame_class, 4),
 
     // @Group: SERVO
     // @Path: ../libraries/SRV_Channel/SRV_Channels.cpp
@@ -986,6 +986,38 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(follow, "FOLL", 27, ParametersG2, AP_Follow),
 #endif
 
+    //throttle to rise to surface for transition in closed loop
+    //AP_GROUPINFO("NV_TRANS_THR", 28, ParametersG2, transition_throttle, 0.65),
+    //throttle to rise to surface for buoy behavior in open loop
+    AP_GROUPINFO("NV_BUOY_THR", 29, ParametersG2, buoy_throttle, 0.5),
+
+    AP_GROUPINFO("FS_THR_WATER", 30, ParametersG2, failsafe_throttle_water, 6),
+
+    //delay time in s for delayed buoy mode
+    AP_GROUPINFO("NV_BUOY_DELAY", 31, ParametersG2, buoy_delay, 0),
+
+    AP_GROUPINFO("NV_TRANS_HGT", 32, ParametersG2, transition_height, 1.5),
+
+    // NV_AUTO Params
+    AP_GROUPINFO("NV_AP_PID_z_kP", 33, ParametersG2, nv_ap_pid_z_kP, 1),
+    AP_GROUPINFO("NV_AP_PID_z_kD", 34, ParametersG2, nv_ap_pid_z_kD, 0),
+    AP_GROUPINFO("NV_AP_PID_z_C", 35, ParametersG2, nv_ap_pid_z_C, 0),
+    AP_GROUPINFO("WAT_ANGLE_MAX", 36, ParametersG2, water_angle_max, 8000),
+    AP_GROUPINFO("AIR_ANGLE_MAX", 37, ParametersG2, air_angle_max, 3000),
+
+    AP_GROUPINFO("NV_TRANS_GOAL", 38, ParametersG2, trans_goalrt, 50),
+    AP_GROUPINFO("NV_TRANS_RT", 39, ParametersG2, trans_climbrt, 10),
+
+    AP_GROUPINFO("NV_TRANS_ANG", 40, ParametersG2, trans_max_angle, 500),
+
+    // adding UserParameters feature
+#ifdef USER_PARAMS_ENABLED
+    AP_SUBGROUPINFO(user_parameters, "USR", 41, ParametersG2, UserParameters),
+#endif
+
+    AP_GROUPINFO("NV_CR_FS_TIME", 40, ParametersG2, cr_fs_time_s, 5),
+    AP_GROUPINFO("NV_ATT_FS_TIME", 41, ParametersG2, att_fs_time_s, 3),
+
     AP_GROUPEND
 };
 
@@ -1012,6 +1044,9 @@ ParametersG2::ParametersG2(void)
 #endif
 #if MODE_FOLLOW_ENABLED == ENABLED
     ,follow()
+#endif
+#ifdef USER_PARAMS_ENABLED
+    ,user_parameters()
 #endif
 {
     AP_Param::setup_object_defaults(this, var_info);

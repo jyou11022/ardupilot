@@ -6,6 +6,9 @@
 
 #include <AP_Common/AP_Common.h>
 #include <AP_HAL/AP_HAL.h>
+#include <AP_Motors/AP_Motors_Class.h>
+
+#include <string.h>
 
 #if HAL_WITH_UAVCAN
 
@@ -29,6 +32,7 @@
 #include <uavcan/equipment/actuator/Status.hpp>
 
 #include <uavcan/equipment/esc/RawCommand.hpp>
+#include <uavcan/equipment/esc/Status.hpp>
 #include <uavcan/equipment/indication/LightsCommand.hpp>
 #include <uavcan/equipment/indication/SingleLightCommand.hpp>
 #include <uavcan/equipment/indication/RGB565.hpp>
@@ -358,6 +362,23 @@ static void battery_info_st_cb1(const uavcan::ReceivedDataStructure<uavcan::equi
 static void (*battery_info_st_cb_arr[2])(const uavcan::ReceivedDataStructure<uavcan::equipment::power::BatteryInfo>& msg)
         = { battery_info_st_cb0, battery_info_st_cb1 };
 
+static void esc_status_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::esc::Status>& msg, uint8_t mgr){
+    AP_UAVCAN *ap_uavcan = AP_UAVCAN::get_uavcan(mgr);
+    if (ap_uavcan == nullptr){
+        return;
+    }
+
+    AP_Motors::get_instance()->update_esc_state(msg.esc_index, msg.voltage, msg.current, msg.temperature, msg.rpm, msg.power_rating_pct > 0, msg.error_count);
+}
+static void esc_status_cb0(const uavcan::ReceivedDataStructure<uavcan::equipment::esc::Status>& msg){
+    esc_status_cb(msg, 0);
+}
+static void esc_status_cb1(const uavcan::ReceivedDataStructure<uavcan::equipment::esc::Status>& msg){
+    esc_status_cb(msg, 1);
+}
+static void (*esc_status_cb_arr[2])(const uavcan::ReceivedDataStructure<uavcan::equipment::esc::Status>& msg)
+    = { esc_status_cb0, esc_status_cb1 };
+
 // publisher interfaces
 static uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand>* act_out_array[MAX_NUMBER_OF_CAN_DRIVERS];
 static uavcan::Publisher<uavcan::equipment::esc::RawCommand>* esc_raw[MAX_NUMBER_OF_CAN_DRIVERS];
@@ -534,6 +555,15 @@ bool AP_UAVCAN::try_init(void)
     const int battery_info_start_res = battery_info_st->start(battery_info_st_cb_arr[_uavcan_i]);
     if (battery_info_start_res < 0) {
         debug_uavcan(1, "UAVCAN BatteryInfo subscriber start problem\n\r");
+        return false;
+    }
+
+    uavcan::Subscriber<uavcan::equipment::esc::Status> *esc_status_subscriber;
+    esc_status_subscriber = new uavcan::Subscriber<uavcan::equipment::esc::Status>(*node);
+    const int esc_status_start_res = esc_status_subscriber->start(esc_status_cb_arr[_uavcan_i]);
+    if (esc_status_start_res < 0){
+        debug_uavcan(1, "UAVCAN EscStatus subscriber start problem\n\r");
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "UAVCAN EscStatus subscriber start problem\n\r");
         return false;
     }
 

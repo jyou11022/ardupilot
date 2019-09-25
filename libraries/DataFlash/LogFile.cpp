@@ -216,7 +216,8 @@ void DataFlash_Class::Log_Write_RCIN(void)
         chan11        : RC_Channels::get_radio_in(10),
         chan12        : RC_Channels::get_radio_in(11),
         chan13        : RC_Channels::get_radio_in(12),
-        chan14        : RC_Channels::get_radio_in(13)
+        chan14        : RC_Channels::get_radio_in(13),
+        ch6_noise     : RC_Channels::get_ch6_noise(),
     };
     WriteBlock(&pkt, sizeof(pkt));
 }
@@ -1535,10 +1536,10 @@ void DataFlash_Class::Log_Write_ESC(void)
                 struct log_Esc pkt = {
                     LOG_PACKET_HEADER_INIT((uint8_t)(LOG_ESC1_MSG + i)),
                     time_us     : time_us,
-                    rpm         : (int32_t)(esc_status.esc[i].esc_rpm/10),
-                    voltage     : (uint16_t)(esc_status.esc[i].esc_voltage*100.0f + .5f),
-                    current     : (uint16_t)(esc_status.esc[i].esc_current*100.0f + .5f),
-                    temperature : (int16_t)(esc_status.esc[i].esc_temperature*100.0f + .5f),
+                    rpm         : (esc_status.esc[i].esc_rpm),
+                    voltage     : (esc_status.esc[i].esc_voltage*100.0f + .5f),
+                    current     : (esc_status.esc[i].esc_current*100.0f + .5f),
+                    temperature : (esc_status.esc[i].esc_temperature*100.0f + .5f),
                     current_tot : 0
                 };
 
@@ -1547,6 +1548,22 @@ void DataFlash_Class::Log_Write_ESC(void)
         }
     }
 #endif // CONFIG_HAL_BOARD
+}
+
+void DataFlash_Class::Log_Write_ESC(int16_t i, float voltage, float current, int16_t temperature, int16_t rpm, bool is_underwater, int16_t meas_kv){
+    struct log_Esc pkt = {
+        LOG_PACKET_HEADER_INIT((uint8_t)(LOG_ESC1_MSG + i-1)),
+        time_us : AP_HAL::micros64(),
+        rpm : rpm,
+        voltage : voltage,
+        current : current,
+        temperature : temperature,
+        current_tot : 0,
+        is_underwater : (int8_t)is_underwater,
+        meas_kv : meas_kv
+    };
+
+    WriteBlock(&pkt, sizeof(pkt));
 }
 
 // Write a AIRSPEED packet

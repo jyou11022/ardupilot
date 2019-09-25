@@ -177,9 +177,18 @@ public:
 
     uint8_t get_filter_range() const { return _filter_range; }
 
+    float get_depth(int i);
+
     // indicate which bit in LOG_BITMASK indicates baro logging enabled
     void set_log_baro_bit(uint32_t bit) { _log_baro_bit = bit; }
     bool should_df_log() const;
+
+    void set_primary_baro_air(){ sensors[_primary_baro].type = BARO_TYPE_AIR;}
+    void set_primary_baro_water(){ sensors[_primary_baro].type = BARO_TYPE_WATER;}
+
+    int get_bar02_c1(){return (int)_ms5837_02_c1;}
+    int get_bar02_c3(){return (int)_ms5837_02_c3;}
+    int get_bar02_offset(){return (int)_ms5837_02_offset;}
 
 private:
     // singleton
@@ -230,6 +239,14 @@ private:
 
     bool _add_backend(AP_Baro_Backend *backend);
     AP_Int8                            _filter_range;  // valid value range from mean value
+    AP_Int16                           _calibration_buf;
+
+    AP_Int32                           _ms5837_02_c1;
+    AP_Int32                           _ms5837_02_c3;
+    AP_Int32                           _ms5837_02_offset;
+
+    uint32_t                           _cal_buf_count;
+    uint32_t                           _cal_gnd_press_avg;
 };
 
 namespace AP {

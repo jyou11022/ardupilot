@@ -115,6 +115,10 @@ enum control_mode_t {
     SMART_RTL =    21,  // SMART_RTL returns to home by retracing its steps
     FLOWHOLD  =    22,  // FLOWHOLD holds position with optical flow without rangefinder
     FOLLOW    =    23,  // follow attempts to follow another vehicle or ground station
+    TRANSITION =   24,
+    BUOY =         25,
+    DELAYED_BUOY = 26,
+    NV_AUTO =      27,
 };
 
 enum mode_reason_t {
@@ -207,6 +211,9 @@ enum AutoMode {
     Auto_NavGuided,
     Auto_Loiter,
     Auto_NavPayloadPlace,
+    Auto_Transition,
+    Auto_StopMotors,
+    Auto_NV_Auto,
 };
 
 // Guided modes
@@ -464,6 +471,8 @@ enum LoggingParameters {
 #define FS_THR_ENABLED_ALWAYS_LAND                 3
 #define FS_THR_ENABLED_ALWAYS_SMARTRTL_OR_RTL      4
 #define FS_THR_ENABLED_ALWAYS_SMARTRTL_OR_LAND     5
+#define FS_THR_ENABLED_ALWAYS_BUOY                 6
+#define FS_THR_ENABLED_ALWAYS_DISARM               7
 
 // GCS failsafe definitions (FS_GCS_ENABLE parameter)
 #define FS_GCS_DISABLED                        0

@@ -22,12 +22,21 @@
 // auto_init - initialise auto controller
 bool Copter::ModeAuto::init(bool ignore_checks)
 {
-    if ((copter.position_ok() && copter.mission.num_commands() > 1) || ignore_checks) {
-        _mode = Auto_Loiter;
-
+    /*
+    if (!copter.position_ok()){
+        return false;
+    }
+    */
+    if (copter.mission.num_commands() > 1 || ignore_checks) {
         // reject switching to auto mode if landed with motors armed but first command is not a takeoff (reduce chance of flips)
         if (motors->armed() && ap.land_complete && !copter.mission.starts_with_takeoff_cmd()) {
             gcs().send_text(MAV_SEVERITY_CRITICAL, "Auto: Missing Takeoff Cmd");
+            return false;
+        }
+
+        //if copter has commands that require external barometer but has no external barometer, reject
+        if (copter.mission.has_uw_baro_cmd() && copter.barometer.num_instances() <= 2){
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Auto: Missing external barometer!");
             return false;
         }
 
@@ -44,10 +53,29 @@ bool Copter::ModeAuto::init(bool ignore_checks)
         copter.mode_guided.limit_clear();
 
         // start/resume the mission (based on MIS_RESTART parameter)
+        _mode = Auto_Loiter;
         copter.mission.start_or_resume();
         return true;
     } else {
         return false;
+    }
+}
+
+bool Copter::ModeAuto::requires_GPS() const {
+    bool running = copter.mission.state() == AP_Mission::MISSION_RUNNING;
+    //if not running, start or resume to update _mode, then immediately stop
+    if (!running){
+        copter.mission.start_or_resume();
+        copter.mission.stop();
+    }
+
+    switch(_mode){
+        default:
+            return true;
+        case Auto_StopMotors:
+        case Auto_Transition:
+        case Auto_NV_Auto:
+            return false;
     }
 }
 
@@ -56,6 +84,12 @@ bool Copter::ModeAuto::init(bool ignore_checks)
 //      relies on run_autopilot being called at 10hz which handles decision making and non-navigation related commands
 void Copter::ModeAuto::run()
 {
+    // if not armed set throttle to zero and exit immediately
+    if (!motors->armed() || ap.throttle_zero || !motors->get_interlock()) {
+        zero_throttle_and_relax_ac();
+        return;
+    }
+
     // call the correct auto controller
     switch (_mode) {
 
@@ -69,7 +103,8 @@ void Copter::ModeAuto::run()
         break;
 
     case Auto_Land:
-        land_run();
+        //land_run();
+        copter.mode_land.run();
         break;
 
     case Auto_RTL:
@@ -96,6 +131,20 @@ void Copter::ModeAuto::run()
 
     case Auto_NavPayloadPlace:
         payload_place_run();
+        break;
+
+    case Auto_Transition:
+        copter.mode_transition.run();
+        break;
+    
+    case Auto_StopMotors:
+        stop_motors_run();
+        break;
+
+    case Auto_NV_Auto:
+        nv_auto_run();
+        break;
+    default:
         break;
     }
 }
@@ -216,12 +265,15 @@ void Copter::ModeAuto::wp_start(const Location_Class& dest_loc)
 // auto_land_start - initialises controller to implement a landing
 void Copter::ModeAuto::land_start()
 {
-    // set target to stopping point
-    Vector3f stopping_point;
-    loiter_nav->get_stopping_point_xy(stopping_point);
+    // // set target to stopping point
+    // Vector3f stopping_point;
+    // loiter_nav->get_stopping_point_xy(stopping_point);
 
-    // call location specific land start function
-    land_start(stopping_point);
+    // // call location specific land start function
+    // land_start(stopping_point);
+
+    _mode = Auto_Land;
+    copter.mode_land.init(true);
 }
 
 // auto_land_start - initialises controller to implement a landing
@@ -370,6 +422,8 @@ void Copter::ModeAuto::payload_place_start()
 // start_command - this function will be called when the ap_mission lib wishes to start a new command
 bool Copter::ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
 {
+    if (!motors->armed()) return false;
+
     // To-Do: logging when new commands start/end
     if (copter.should_log(MASK_LOG_CMD)) {
         copter.DataFlash.Log_Write_Mission_Cmd(copter.mission, cmd);
@@ -533,6 +587,27 @@ bool Copter::ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
         break;
 #endif
 
+    case AP_MISSION_WAITFORGPS:
+        do_waitForGPS(cmd);
+        break;
+
+    case AP_MISSION_TRANSITION:
+        _mode = Auto_Transition;
+        copter.mode_transition.do_command(cmd);
+        break;
+
+    case AP_MISSION_UW_THROTTLE:
+    case AP_MISSION_UW_ALTITUDE:
+    case AP_MISSION_UW_ATTITUDE:
+        _mode = Auto_NV_Auto;
+        do_nv_auto(cmd);
+        break;
+
+    case AP_MISSION_STOP_MOTORS:
+        _mode = Auto_StopMotors;
+        do_stop_motors(cmd);
+        break;
+
     default:
         // do nothing with unrecognized MAVLink messages
         break;
@@ -546,6 +621,11 @@ bool Copter::ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
 //      we double check that the flight mode is AUTO to avoid the possibility of ap-mission triggering actions while we're not in AUTO mode
 bool Copter::ModeAuto::verify_command_callback(const AP_Mission::Mission_Command& cmd)
 {
+    // if not armed set throttle to zero and exit immediately
+    if (!motors->armed() || ap.throttle_zero || !motors->get_interlock()) {
+        return false;
+    }
+
     if (copter.flightmode == &copter.mode_auto) {
         bool cmd_complete = verify_command(cmd);
 
@@ -695,6 +775,19 @@ bool Copter::ModeAuto::verify_command(const AP_Mission::Mission_Command& cmd)
 
     case MAV_CMD_CONDITION_YAW:
         return verify_yaw();
+
+    case AP_MISSION_WAITFORGPS:
+        return verify_waitForGPS();
+
+    case AP_MISSION_TRANSITION:
+        return copter.mode_transition.verify() ;
+
+    case AP_MISSION_UW_THROTTLE:
+    case AP_MISSION_STOP_MOTORS:
+        return (AP_HAL::millis() - condition_start > condition_value);
+    case AP_MISSION_UW_ALTITUDE:
+    case AP_MISSION_UW_ATTITUDE:
+        return verify_nv_auto(cmd);
 
     // do commands (always return true)
     case MAV_CMD_DO_CHANGE_SPEED:
@@ -934,6 +1027,18 @@ void Copter::ModeAuto::loiter_run()
     attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), target_yaw_rate);
 }
 
+void Copter::ModeAuto::stop_motors_run(){
+    for(uint8_t i = 0; i<8; i++){
+        motors->motor_medium[i] = MOTORS_OFF;
+    }
+    zero_throttle_and_relax_ac();
+    return;
+}
+
+void Copter::ModeAuto::nv_auto_run(){
+    copter.mode_nv_auto.run_mission();
+}
+
 // auto_payload_place_start - initialises controller to implement placement of a load
 void Copter::ModeAuto::payload_place_start(const Vector3f& destination)
 {
@@ -1124,6 +1229,25 @@ void Copter::ModeAuto::do_nav_wp(const AP_Mission::Mission_Command& cmd)
         }
         copter.wp_nav->set_fast_waypoint(fast_waypoint);
     }
+}
+
+void Copter::ModeAuto::do_nv_auto(const AP_Mission::Mission_Command& cmd){
+    copter.mode_nv_auto.do_command(cmd);
+    switch(cmd.id){
+        case AP_MISSION_UW_THROTTLE:
+            condition_value = cmd.content.uw_throttle.delay * 1000;
+            break;
+        default:
+            break;
+    }
+    condition_start = AP_HAL::millis();
+    return;
+}
+
+void Copter::ModeAuto::do_stop_motors(const AP_Mission::Mission_Command& cmd){
+    condition_start = millis();
+    condition_value = cmd.content.delay.seconds * 1000;     // convert seconds to milliseconds
+    return;
 }
 
 // do_land - initiate landing procedure
@@ -1340,6 +1464,10 @@ void Copter::ModeAuto::do_nav_delay(const AP_Mission::Mission_Command& cmd)
         nav_delay_time_max = AP::rtc().get_time_utc(cmd.content.nav_delay.hour_utc, cmd.content.nav_delay.min_utc, cmd.content.nav_delay.sec_utc, 0);
     }
     gcs().send_text(MAV_SEVERITY_INFO, "Delaying %u sec",(unsigned int)(nav_delay_time_max/1000));
+}
+
+void Copter::ModeAuto::do_waitForGPS(const AP_Mission::Mission_Command& cmd){
+    gcs().send_text(MAV_SEVERITY_INFO, "Waiting for GPS");
 }
 
 /********************************************************************************/
@@ -1565,7 +1693,7 @@ bool Copter::ModeAuto::verify_land()
 
         case LandStateType_Descending:
             // rely on THROTTLE_LAND mode to correctly update landing status
-            retval = ap.land_complete;
+            retval = ap.land_complete || motors->is_underwater();
             break;
 
         default:
@@ -1909,6 +2037,59 @@ bool Copter::ModeAuto::verify_nav_delay(const AP_Mission::Mission_Command& cmd)
         return true;
     }
     return false;
+}
+
+bool Copter::ModeAuto::verify_waitForGPS(){
+    
+    nav_filter_status filt_status;
+    if (copter.ahrs.get_filter_status(filt_status)){
+        if (filt_status.flags.gps_glitching){
+            return false;
+        }
+    }
+
+    filt_status = copter.inertial_nav.get_filter_status();
+    if (filt_status.flags.gps_glitching){
+        return false;
+    }
+
+    if (!ahrs.healthy() || !copter.position_ok()) return false;
+
+    // check EKF compass variance is below failsafe threshold
+    float vel_variance, pos_variance, hgt_variance, tas_variance;
+    Vector3f mag_variance;
+    Vector2f offset;
+    copter.ahrs.get_variances(vel_variance, pos_variance, hgt_variance, mag_variance, tas_variance, offset);
+    if (mag_variance.length() >= copter.g.fs_ekf_thresh) {
+        return false;
+    }
+
+    // check home and EKF origin are not too far
+    if (copter.far_from_EKF_origin(ahrs.get_home())) {
+        return false;
+    }
+
+    // warn about hdop separately - to prevent user confusion with no gps lock
+    if (copter.gps.get_hdop() > copter.g.gps_hdop_good) {
+        return false;
+    }
+
+    // call parent gps checks
+    if (!copter.arming.AP_Arming::gps_checks(false)) {
+        return false;
+    }
+
+    // reinitialise waypoint and spline controller
+    wp_nav->wp_and_spline_init();
+
+    // clear guided limits
+    copter.mode_guided.limit_clear();
+    
+    return true;
+}
+
+bool Copter::ModeAuto::verify_nv_auto(const AP_Mission::Mission_Command& cmd){
+    return copter.mode_nv_auto.verify();
 }
 
 #endif

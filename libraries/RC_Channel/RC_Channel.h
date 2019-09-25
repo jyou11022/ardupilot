@@ -161,12 +161,18 @@ public:
     static bool receiver_bind(const int dsmMode);                      // puts the reciever in bind mode if present, returns true if success
     static void set_override(const uint8_t chan, const int16_t value, const uint32_t timestamp_ms = 0); // set a channels override value
     static bool has_active_overrides(void);                            // returns true if there are overrides applied that are valid
+    static uint16_t get_ch6_noise(void){return ch6_noise; }
 
 private:
     // this static arrangement is to avoid static pointers in AP_Param tables
     static RC_Channel *channels;
     static bool has_new_overrides;
     static AP_Float *override_timeout;
+
+    static uint16_t prev_ch6_reading;
+    static uint16_t ch6_noise;
+    static uint32_t last_noise_alert_time_ms;
+
     RC_Channel obj_channels[NUM_RC_CHANNELS];
     AP_Float _override_timeout;
 };

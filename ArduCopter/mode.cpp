@@ -155,8 +155,24 @@ Copter::Mode *Copter::mode_from_mode_num(const uint8_t mode)
             break;
 #endif
 
-        default:
+        case TRANSITION:
+            ret = &mode_transition;
             break;
+
+        case BUOY:
+            ret = &mode_buoy;
+            break;
+
+        case DELAYED_BUOY:
+            ret = &mode_delayed_buoy;
+            break;
+
+        case NV_AUTO:
+            ret = &mode_nv_auto;
+            break;
+
+        default:
+            break; // marco: typically, there's no "break;" here on the switch/case syntax
     }
 
     return ret;

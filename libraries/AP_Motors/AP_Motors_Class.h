@@ -5,6 +5,7 @@
 #include <AP_Notify/AP_Notify.h>      // Notify library
 #include <SRV_Channel/SRV_Channel.h>
 #include <Filter/Filter.h>         // filter library
+#include <AP_UAVCAN/AP_UAVCAN.h>
 
 // offsets for motors in motor_out and _motor_filtered arrays
 #define AP_MOTORS_MOT_1 0U
@@ -24,6 +25,22 @@
 
 // motor update rate
 #define AP_MOTORS_SPEED_DEFAULT     490 // default output rate to the motors
+
+// naviator modes:
+#define MOTORS_REGULAR 0
+#define MOTORS_AIR 1
+#define MOTORS_WATER 2
+#define MOTORS_OFF 4
+
+// naviator defaults
+//   regular::  (deadzone) 1025->1050 + (regular) 1050->1860
+//   naviator:: (deadzone) 1025->1050 + (water) 1051->1300 + (deadzone) 1301->1325 + (air) 1326->1860
+#define NV_ESC_PWM_MIN          1025
+#define NV_ESC_PWM_WATER_MIN    1055
+#define NV_ESC_PWM_WATER_MAX    1290
+#define NV_ESC_PWM_AIR_MIN      1330
+#define NV_ESC_PWM_AIR_MAX      1860
+#define NV_ESC_PWM_MAX          1860
 
 /// @class      AP_Motors
 class AP_Motors {
@@ -161,7 +178,40 @@ public:
                     PWM_TYPE_DSHOT1200  = 7};
     pwm_type            get_pwm_type(void) const { return (pwm_type)_pwm_type.get(); }
     
+    // naviator variables
+    int16_t             motor_output[AP_MOTORS_MAX_NUM_MOTORS];
+    bool                motor_min_enable;
+    uint16_t            motor_min;
+    uint8_t             motor_medium[AP_MOTORS_MAX_NUM_MOTORS]; 
+
+    void update_esc_state(int index, float voltage, float current, float temperature, int rpm, bool is_underwater, int meas_kv);
+    void Log_Write_ESCs(void);
+
+    bool control_state_water();
+
+    bool is_underwater();
+    bool top_is_underwater();
+    bool bot_is_underwater();
+
+    float get_voltage();
+    float get_current();
+
+    //checks ESCs to see if healthy, returns 0 if all healthy, returns first ESC to fail health otherwise
+    uint8_t ESC_unhealthy();
+
 protected:
+
+    struct EscStatus_info{
+        float voltage;
+        float current;
+        float temperature;
+        int rpm;
+        bool is_underwater;
+        int meas_kv;
+        uint32_t last_reading_ms = 0;
+    };
+    EscStatus_info esc_status_states[16];
+
     // output functions that should be overloaded by child classes
     virtual void        output_armed_stabilizing()=0;
     virtual void        rc_write(uint8_t chan, uint16_t pwm);

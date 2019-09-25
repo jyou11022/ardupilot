@@ -271,6 +271,11 @@ void AP_SerialManager::init()
                     state[i].uart->begin(map_baudrate(state[i].baud), 30, 30);
                     state[i].uart->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
                     break;
+                case SerialProtocol_Feather:
+                    state[i].uart->begin(map_baudrate(state[i].baud));
+                    state[i].uart->configure_parity(0);
+                    state[i].uart->set_stop_bits(1);
+                    break;
             }
         }
     }
@@ -305,6 +310,19 @@ AP_HAL::UARTDriver *AP_SerialManager::find_serial(enum SerialProtocol protocol, 
         return nullptr;
     }
     return _state->uart;
+}
+AP_HAL::UARTDriver *AP_SerialManager::find_serial(enum SerialProtocol protocol) const{
+    for(uint8_t i=0; i<SERIALMANAGER_NUM_PORTS; i++){
+
+        if (protocol == state[i].protocol){
+
+            return state[i].uart;
+
+        } 
+
+    }
+
+    return nullptr;
 }
 
 // find_baudrate - searches available serial ports for the first instance that allows the given protocol

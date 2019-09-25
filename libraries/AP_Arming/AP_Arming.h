@@ -68,6 +68,8 @@ public:
 
     static const struct AP_Param::GroupInfo        var_info[];
 
+    virtual bool gps_checks(bool report);
+
 protected:
     AP_Arming(const AP_AHRS &ahrs_ref, Compass &compass,
               const AP_BattMonitor &battery);
@@ -100,8 +102,6 @@ protected:
     virtual bool ins_checks(bool report);
 
     virtual bool compass_checks(bool report);
-
-    virtual bool gps_checks(bool report);
 
     bool battery_checks(bool report);
 

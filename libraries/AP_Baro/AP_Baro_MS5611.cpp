@@ -33,6 +33,7 @@ static const uint8_t CMD_MS56XX_PROM = 0xA0;
 #define ADDR_CMD_CONVERT_D1_OSR1024 0x44
 #define ADDR_CMD_CONVERT_D1_OSR2048 0x46
 #define ADDR_CMD_CONVERT_D1_OSR4096 0x48
+#define ADDR_CMD_CONVERT_D1_OSR8192 0X4A
 
 /* write to one of these addresses to start temperature conversion */
 #define ADDR_CMD_CONVERT_D2_OSR256  0x50
@@ -40,6 +41,7 @@ static const uint8_t CMD_MS56XX_PROM = 0xA0;
 #define ADDR_CMD_CONVERT_D2_OSR1024 0x54
 #define ADDR_CMD_CONVERT_D2_OSR2048 0x56
 #define ADDR_CMD_CONVERT_D2_OSR4096 0x58
+#define ADDR_CMD_CONVERT_D2_OSR8192 0x5A
 
 /*
   use an OSR of 1024 to reduce the self-heating effect of the
@@ -94,6 +96,9 @@ bool AP_Baro_MS56XX::_init()
     _dev->transfer(&CMD_MS56XX_RESET, 1, nullptr, 0);
     hal.scheduler->delay(4);
     
+    _addr_cmd_convert_temperature = ADDR_CMD_CONVERT_D2_OSR1024;
+    _addr_cmd_convert_pressure = ADDR_CMD_CONVERT_D1_OSR1024;   
+ 
     const char *name = "MS5611";
     switch (_ms56xx_type) {
     case BARO_MS5607:
@@ -102,8 +107,14 @@ bool AP_Baro_MS56XX::_init()
     case BARO_MS5611:
         prom_read_ok = _read_prom_5611(prom);
         break;
-    case BARO_MS5837:
-        name = "MS5837";
+    case BARO_MS5837_30:
+        name = "MS5837_30";
+        prom_read_ok = _read_prom_5637(prom);
+        break;
+    case BARO_MS5837_02:
+        name = "MS5837_02";
+        _addr_cmd_convert_pressure = ADDR_CMD_CONVERT_D1_OSR8192;
+        _addr_cmd_convert_temperature = ADDR_CMD_CONVERT_D2_OSR8192;
         prom_read_ok = _read_prom_5637(prom);
         break;
     case BARO_MS5637:
@@ -127,6 +138,11 @@ bool AP_Baro_MS56XX::_init()
     _cal_reg.c5 = prom[5];
     _cal_reg.c6 = prom[6];
 
+    if (_ms56xx_type == BARO_MS5837_02){
+        _cal_reg.c1 = _frontend.get_bar02_c1();
+        _cal_reg.c3 = _frontend.get_bar02_c3();
+    }
+
     // Send a command to read temperature first
     _dev->transfer(&ADDR_CMD_CONVERT_TEMPERATURE, 1, nullptr, 0);
     _state = 0;
@@ -135,8 +151,8 @@ bool AP_Baro_MS56XX::_init()
 
     _instance = _frontend.register_sensor();
 
-    if (_ms56xx_type == BARO_MS5837) {
-        _frontend.set_type(_instance, AP_Baro::BARO_TYPE_WATER);
+    if (_ms56xx_type == BARO_MS5837_30 || _ms56xx_type == BARO_MS5837_02) {
+        _frontend.set_type(_instance, AP_Baro::BARO_TYPE_AIR);
     }
 
     // lower retries for run
@@ -284,8 +300,8 @@ void AP_Baro_MS56XX::_timer(void)
         next_state = (_state + 1) % 5;
     }
 
-    next_cmd = next_state == 0 ? ADDR_CMD_CONVERT_TEMPERATURE
-                               : ADDR_CMD_CONVERT_PRESSURE;
+    next_cmd = next_state == 0 ? _addr_cmd_convert_temperature
+                               : _addr_cmd_convert_pressure;
     if (!_dev->transfer(&next_cmd, 1, nullptr, 0)) {
         return;
     }
@@ -370,8 +386,13 @@ void AP_Baro_MS56XX::update()
     case BARO_MS5637:
         _calculate_5637();
         break;
-    case BARO_MS5837:
-        _calculate_5837();
+    case BARO_MS5837_30:
+        _calculate_5837_30();
+        break;
+    case BARO_MS5837_02:
+        _D1 += _frontend.get_bar02_offset();
+        _calculate_5837_02();
+        break;
     }
 }
 
@@ -479,7 +500,7 @@ void AP_Baro_MS56XX::_calculate_5637()
 }
 
 // Calculate Temperature and compensated Pressure in real units (Celsius degrees*100, mbar*100).
-void AP_Baro_MS56XX::_calculate_5837()
+void AP_Baro_MS56XX::_calculate_5837_30()
 {
     int32_t dT, TEMP;
     int64_t OFF, SENS;
@@ -505,9 +526,52 @@ void AP_Baro_MS56XX::_calculate_5837()
         OFF = OFF - OFF2;
         SENS = SENS - SENS2;
     }
+    else{
+        int32_t Ti = 2*(dT*dT)/(137438953472);
+        int32_t OFFi = (TEMP - 2000) * (TEMP - 2000)/16;
+        
+        TEMP = TEMP - Ti;
+        OFF = OFF - OFFi;
+    }
 
     int32_t pressure = ((int64_t)raw_pressure * SENS / (int64_t)2097152 - OFF) / (int64_t)8192;
     pressure = pressure * 10; // MS5837 only reports to 0.1 mbar
+    float temperature = TEMP * 0.01f;
+
+    _copy_to_frontend(_instance, (float)pressure, temperature);
+}
+
+void AP_Baro_MS56XX::_calculate_5837_02()
+
+{
+    int32_t dT, TEMP;
+    int64_t OFF, SENS;
+    int32_t raw_pressure = _D1;
+    int32_t raw_temperature = _D2;
+
+    // Formulas from manufacturer datasheet
+    // sub -15c temperature compensation is not included
+
+    dT = raw_temperature - (((uint32_t)_cal_reg.c5) << 8);
+    TEMP = 2000 + ((int64_t)dT * (int64_t)_cal_reg.c6) / 8388608;
+    OFF = (int64_t)_cal_reg.c2 * (int64_t)131072 + ((int64_t)_cal_reg.c4 * (int64_t)dT) / (int64_t)64;
+    //SENS = (int64_t)_cal_reg.c1 * (int64_t)65536 + ((int64_t)_cal_reg.c3 * (int64_t)dT) / (int64_t)128;
+    SENS = (int64_t)_frontend.get_bar02_c1() * (int64_t)65536 + ((int64_t)_frontend.get_bar02_c3() * (int64_t)dT) / (int64_t)128;
+
+    if (TEMP < 2000) {
+        // second order temperature compensation when under 20 degrees C
+        int32_t T2 = ((int64_t)11 * ((int64_t)dT * (int64_t)dT) / (int64_t)34359738368);
+        int64_t aux = (TEMP - 2000) * (TEMP - 2000);
+        int64_t OFF2 = 31 * aux / 8;
+        int64_t SENS2 = 63 * aux / 32;
+
+        TEMP = TEMP - T2;
+        OFF = OFF - OFF2;
+        SENS = SENS - SENS2;
+    }
+
+    int32_t pressure = ((int64_t)raw_pressure * SENS / (int64_t)2097152 - OFF) / (int64_t)32768;
+    pressure = pressure; // MS5837 only reports to 0.1 mbar
     float temperature = TEMP * 0.01f;
 
     _copy_to_frontend(_instance, (float)pressure, temperature);
