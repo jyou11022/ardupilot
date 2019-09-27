@@ -986,8 +986,11 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(follow, "FOLL", 27, ParametersG2, AP_Follow),
 #endif
 
-    //throttle to rise to surface for transition in closed loop
-    //AP_GROUPINFO("NV_TRANS_THR", 28, ParametersG2, transition_throttle, 0.65),
+    // adding UserParameters feature
+#ifdef USER_PARAMS_ENABLED
+    AP_SUBGROUPINFO(user_parameters, "USR", 28, ParametersG2, UserParameters),
+#endif
+
     //throttle to rise to surface for buoy behavior in open loop
     AP_GROUPINFO("NV_BUOY_THR", 29, ParametersG2, buoy_throttle, 0.5),
 
@@ -1010,13 +1013,9 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 
     AP_GROUPINFO("NV_TRANS_ANG", 40, ParametersG2, trans_max_angle, 500),
 
-    // adding UserParameters feature
-#ifdef USER_PARAMS_ENABLED
-    AP_SUBGROUPINFO(user_parameters, "USR", 41, ParametersG2, UserParameters),
-#endif
 
-    AP_GROUPINFO("NV_CR_FS_TIME", 42, ParametersG2, cr_fs_time_s, 5),
-    AP_GROUPINFO("NV_ATT_FS_TIME", 43, ParametersG2, att_fs_time_s, 3),
+    AP_GROUPINFO("NV_CR_FS_TIME", 41, ParametersG2, cr_fs_time_s, 5),
+    AP_GROUPINFO("NV_ATT_FS_TIME", 42, ParametersG2, att_fs_time_s, 3),
 
     AP_GROUPEND
 };

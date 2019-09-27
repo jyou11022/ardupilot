@@ -39,9 +39,6 @@
 
 #include <uavcan/equipment/power/BatteryInfo.hpp>
 
-//HereFlow Optical Flow
-#include <com/hex/equipment/flow/Measurement.hpp>
-
 extern const AP_HAL::HAL& hal;
 
 #define debug_uavcan(level, fmt, args...) do { if ((level) <= AP_BoardConfig_CAN::get_can_debug()) { hal.console->printf(fmt, ##args); }} while (0)
@@ -382,37 +379,6 @@ static void esc_status_cb1(const uavcan::ReceivedDataStructure<uavcan::equipment
 static void (*esc_status_cb_arr[2])(const uavcan::ReceivedDataStructure<uavcan::equipment::esc::Status>& msg)
     = { esc_status_cb0, esc_status_cb1 };
 
-//HereFlow
-static void flow_cb(const uavcan::ReceivedDataStructure<com::hex::equipment::flow::Measurement>& msg, uint8_t mgr)
-{
-    AP_UAVCAN *ap_uavcan = AP_UAVCAN::get_uavcan(mgr);
-    if (ap_uavcan == nullptr) {
-        return;
-    }
-    
-    AP_UAVCAN::Flow_Info *state = ap_uavcan->find_flow_node(msg.getSrcNodeID().get());
-    if (state == nullptr) {
-        return;
-    }
-
-    state->new_data = true;
-    state->flowRate = Vector2f(msg.flow_integral[0], msg.flow_integral[1]);
-    state->bodyRate = Vector2f(msg.rate_gyro_integral[0], msg.rate_gyro_integral[1]);
-    state->integral_time = msg.integration_interval;
-    state->surface_quality = msg.quality;
-
-    // after all is filled, update all listeners with new data
-    ap_uavcan->update_flow_state(msg.getSrcNodeID().get());
-}
-
-static void flow_cb0(const uavcan::ReceivedDataStructure<com::hex::equipment::flow::Measurement>& msg)
-{   flow_cb(msg, 0); }
-static void flow_cb1(const uavcan::ReceivedDataStructure<com::hex::equipment::flow::Measurement>& msg)
-{   flow_cb(msg, 1); }
-static void (*flow_cb_arr[2])(const uavcan::ReceivedDataStructure<com::hex::equipment::flow::Measurement>& msg)
-        = { flow_cb0, flow_cb1 };
-
-
 // publisher interfaces
 static uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand>* act_out_array[MAX_NUMBER_OF_CAN_DRIVERS];
 static uavcan::Publisher<uavcan::equipment::esc::RawCommand>* esc_raw[MAX_NUMBER_OF_CAN_DRIVERS];
@@ -445,12 +411,6 @@ AP_UAVCAN::AP_UAVCAN() :
         _mag_node_max_sensorid_count[i] = 1;
     }
 
-    //HereFlow
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
-        _flow_nodes[i] = UINT8_MAX;
-        _flow_node_taken[i] = 0;
-    }
-
     for (uint8_t i = 0; i < AP_UAVCAN_MAX_LISTENERS; i++) {
         _gps_listener_to_node[i] = UINT8_MAX;
         _gps_listeners[i] = nullptr;
@@ -461,9 +421,6 @@ AP_UAVCAN::AP_UAVCAN() :
         _mag_listener_to_node[i] = UINT8_MAX;
         _mag_listeners[i] = nullptr;
         _mag_listener_sensor_ids[i] = 0;
-
-        _flow_listener_to_node[i] = UINT8_MAX;
-        _flow_listeners[i] = nullptr;
     }
 
     for (uint8_t i = 0; i < AP_UAVCAN_MAX_BI_NUMBER; i++) {
@@ -472,13 +429,6 @@ AP_UAVCAN::AP_UAVCAN() :
         _bi_BM_listener_to_id[i] = UINT8_MAX;
         _bi_BM_listeners[i] = nullptr;
     }
-
-    //HereFlow
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
-        _flow_nodes[i] = UINT8_MAX;
-        _flow_node_taken[i] = 0;
-    }
-
 
     SRV_sem = hal.util->new_semaphore();
     _led_out_sem = hal.util->new_semaphore();
@@ -616,17 +566,6 @@ bool AP_UAVCAN::try_init(void)
         gcs().send_text(MAV_SEVERITY_CRITICAL, "UAVCAN EscStatus subscriber start problem\n\r");
         return false;
     }
-
-    //HereFlow Message Subscriber
-    uavcan::Subscriber<com::hex::equipment::flow::Measurement> *flow_listener;
-    flow_listener = new uavcan::Subscriber<com::hex::equipment::flow::Measurement>(*node);
-    // Register method to handle incoming HereFlow measurement
-    const int flow_listener_res = flow_listener->start(flow_cb_arr[_uavcan_i]);
-    if (flow_listener_res < 0) {
-        debug_uavcan(1, "UAVCAN Flow subscriber start problem\n\r");
-        return false;
-    }
-
 
     act_out_array[_uavcan_i] = new uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand>(*node);
     act_out_array[_uavcan_i]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(20));
@@ -1507,147 +1446,6 @@ bool AP_UAVCAN::led_write(uint8_t led_index, uint8_t red, uint8_t green, uint8_t
     led_out_sem_give();
     return true;
 }
-
-
-//HereFlow
-
-uint8_t AP_UAVCAN::register_flow_listener(OpticalFlow_backend* new_listener, uint8_t preferred_channel)
-{
-    uint8_t sel_place = UINT8_MAX, ret = 0;
-
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_LISTENERS; i++) {
-        if (_flow_listeners[i] == nullptr) {
-            sel_place = i;
-            break;
-        }
-    }
-
-    if (sel_place == UINT8_MAX) {
-        return 0;
-    }
-    if (preferred_channel != 0 && preferred_channel < AP_UAVCAN_MAX_FLOW_NODES) {
-        _flow_listeners[sel_place] = new_listener;
-        _flow_listener_to_node[sel_place] = preferred_channel - 1;
-        _flow_node_taken[_flow_listener_to_node[sel_place]]++;
-        ret = preferred_channel;
-
-        debug_uavcan(2, "reg_flow place:%d, chan: %d\n\r", sel_place, preferred_channel);
-    } else {
-        for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
-            if (_flow_node_taken[i] == 0) {
-                _flow_listeners[sel_place] = new_listener;
-                _flow_listener_to_node[sel_place] = i;
-                _flow_node_taken[i]++;
-                ret = i + 1;
-
-                debug_uavcan(2, "reg_FLOW place:%d, chan: %d\n\r", sel_place, i);
-                break;
-            }
-        }
-    }
-
-    return ret;
-}
-
-uint8_t AP_UAVCAN::register_flow_listener_to_node(OpticalFlow_backend* new_listener, uint8_t node)
-{
-    uint8_t sel_place = UINT8_MAX, ret = 0;
-
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_LISTENERS; i++) {
-        if (_flow_listeners[i] == nullptr) {
-            sel_place = i;
-            break;
-        }
-    }
-
-    if (sel_place != UINT8_MAX) {
-        for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
-            if (_flow_nodes[i] != node) {
-                continue;
-            }
-            _flow_listeners[sel_place] = new_listener;
-            _flow_listener_to_node[sel_place] = i;
-            _flow_node_taken[i]++;
-            ret = i + 1;
-
-            debug_uavcan(2, "reg_flow place:%d, chan: %d\n\r", sel_place, i);
-            break;
-        }
-    }
-
-    return ret;
-}
-
-void AP_UAVCAN::remove_flow_listener(OpticalFlow_backend* rem_listener)
-{
-    // Check for all listeners and compare pointers
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_LISTENERS; i++) {
-        if (_flow_listeners[i] != rem_listener) {
-            continue;
-        }
-        _flow_listeners[i] = nullptr;
-
-        // Also decrement usage counter and reset listening node
-        if (_flow_node_taken[_flow_listener_to_node[i]] > 0) {
-            _flow_node_taken[_flow_listener_to_node[i]]--;
-        }
-        _flow_listener_to_node[i] = UINT8_MAX;
-    }
-}
-
-
-uint8_t AP_UAVCAN::find_smallest_free_flow_node()
-{
-    uint8_t ret = UINT8_MAX;
-
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
-        if (_flow_node_taken[i] == 0) {
-            ret = MIN(ret, _flow_nodes[i]);
-        }
-    }
-
-    return ret;
-}
-
-
-AP_UAVCAN::Flow_Info *AP_UAVCAN::find_flow_node(uint8_t node)
-{
-    // Check if such node is already defined
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
-        if (_flow_nodes[i] == node) {
-            return &_flow_node_state[i];
-        }
-    }
-
-    // If not - try to find free space for it
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
-        if (_flow_nodes[i] == UINT8_MAX) {
-
-            _flow_nodes[i] = node;
-            return &_flow_node_state[i];
-        }
-    }
-
-    // If no space is left - return nullptr
-    return nullptr;
-}
-
-void AP_UAVCAN::update_flow_state(uint8_t node)
-{
-    // Go through all listeners of specified node and call their's update methods
-    for (uint8_t i = 0; i < AP_UAVCAN_MAX_FLOW_NODES; i++) {
-        if (_flow_nodes[i] != node) {
-            continue;
-        }
-        for (uint8_t j = 0; j < AP_UAVCAN_MAX_FLOW_NODES; j++) {
-            if (_flow_listener_to_node[j] == i) {
-                _flow_listeners[j]->handle_flow_msg(_flow_node_state[i].flowRate, _flow_node_state[i].bodyRate,_flow_node_state[i].surface_quality, _flow_node_state[i].integral_time);
-            }
-        }
-    }
-}
-
-
 
 AP_UAVCAN *AP_UAVCAN::get_uavcan(uint8_t iface)
 {
