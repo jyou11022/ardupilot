@@ -275,7 +275,7 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                                    _state[0].bodyRate,
                                                    _last_update_ms,
                                                    get_pos_offset(),0);
-                AP::ahrs_navekf().writeOptFlowMeas(quality2(0),
+                AP::ahrs_navekf().writeOptFlowMeas(quality2(1),
                                                    _state[1].flowRate,
                                                    _state[1].bodyRate,
                                                    _last_update_ms,
@@ -293,15 +293,15 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                                    bodyFused,
                                                    _last_update_ms,
                                                    get_pos_offset(),0);
-                AP::ahrs_navekf().writeOptFlowMeas(quality2(1),
-                                                   _state[1].flowRate,
-                                                   _state[1].bodyRate,
-                                                   _last_update_ms,
-                                                   get_pos_offset(),1);
-
                 AP::ahrs_navekf().writeOptFlowMeas(quality2(0),
                                                    _state[0].flowRate,
                                                    _state[0].bodyRate,
+                                                   _last_update_ms,
+                                                   get_pos_offset(),1);
+
+                AP::ahrs_navekf().writeOptFlowMeas(quality2(1),
+                                                   _state[1].flowRate,
+                                                   _state[1].bodyRate,
                                                    _last_update_ms,
                                                    get_pos_offset(),2);
             }
