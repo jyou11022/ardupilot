@@ -250,8 +250,8 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
         for (uint8_t i = 0; i<num_instances; i++) {
             states_new[i] = false;
         }
+
         _last_update_ms = AP_HAL::millis();
-        
 
         ratio = (_state[0].surface_quality*1.0f)/(MAX(1,_state[0].surface_quality+_state[1].surface_quality));
         flowFused = _state[0].flowRate*ratio+_state[1].flowRate*(1.0f-ratio);
@@ -261,51 +261,43 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
         //     gcs().send_text(MAV_SEVERITY_CRITICAL, "Flow Ratio: %.3f", ratio);
         // }
 
-
         if (_testing == 0) {
             AP::ahrs_navekf().writeOptFlowMeas(quality2(_nav_ind),
                                                _state[_nav_ind].flowRate,
                                                _state[_nav_ind].bodyRate,
                                                _last_update_ms,
-                                               get_pos_offset(),-1);
+                                               get_pos_offset(),0);
+
+            AP::ahrs_navekf().writeOptFlowMeas(quality2(0),
+                                               _state[0].flowRate,
+                                               _state[0].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),1);
+
+            AP::ahrs_navekf().writeOptFlowMeas(quality2(1),
+                                               _state[1].flowRate,
+                                               _state[1].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),2);
         } else {
-            if (_nav_ind == 0) {
-                AP::ahrs_navekf().writeOptFlowMeas(quality2(0),
-                                                   _state[0].flowRate,
-                                                   _state[0].bodyRate,
-                                                   _last_update_ms,
-                                                   get_pos_offset(),0);
-                AP::ahrs_navekf().writeOptFlowMeas(quality2(1),
-                                                   _state[1].flowRate,
-                                                   _state[1].bodyRate,
-                                                   _last_update_ms,
-                                                   get_pos_offset(),1);
-
 
                 AP::ahrs_navekf().writeOptFlowMeas(quality(),
                                                    flowFused,
                                                    bodyFused,
                                                    _last_update_ms,
-                                                   get_pos_offset(),2);
-            } else {
-                AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                                   flowFused,
-                                                   bodyFused,
-                                                   _last_update_ms,
                                                    get_pos_offset(),0);
-                AP::ahrs_navekf().writeOptFlowMeas(quality2(0),
-                                                   _state[0].flowRate,
-                                                   _state[0].bodyRate,
+
+                AP::ahrs_navekf().writeOptFlowMeas(quality2(-_nav_ind+1),
+                                                   _state[-_nav_ind+1].flowRate,
+                                                   _state[-_nav_ind+1].bodyRate,
                                                    _last_update_ms,
                                                    get_pos_offset(),1);
 
-                AP::ahrs_navekf().writeOptFlowMeas(quality2(1),
-                                                   _state[1].flowRate,
-                                                   _state[1].bodyRate,
+                AP::ahrs_navekf().writeOptFlowMeas(quality2(_nav_ind),
+                                                   _state[_nav_ind].flowRate,
+                                                   _state[_nav_ind].bodyRate,
                                                    _last_update_ms,
                                                    get_pos_offset(),2);
-            }
-
         }
         Log_Write_Optflow(0);
         Log_Write_Optflow(1);
