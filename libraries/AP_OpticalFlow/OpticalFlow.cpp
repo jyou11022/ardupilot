@@ -104,7 +104,7 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @Param: _NAV_IND
     // @DisplayName: Optical flow navigation indication
     // @Description: This indicates the optical flow sensor used for EKF.
-    // @Values: 0:First, 1:Second
+    // @Values: 0:First, 1:Second 2: Third
     // @User: Standard
     AP_GROUPINFO("_NAV_IND", 8,  OpticalFlow,    _nav_ind, 0),
 
@@ -246,6 +246,7 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
     if (all_true) {
         for (uint8_t i = 0; i<num_instances; i++) {
             states_new[i] = false;
+            Log_Write_Optflow(i);
         }
         _last_update_ms = AP_HAL::millis();
         
@@ -257,24 +258,23 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                                get_pos_offset(),-1);
         } else {
             AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               _state[_nav_ind].flowRate,
-                                               _state[_nav_ind].bodyRate,
+                                               _state[0].flowRate,
+                                               _state[0].bodyRate,
                                                _last_update_ms,
                                                get_pos_offset(),0);
             AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               _state[_nav_ind].flowRate,
-                                               _state[_nav_ind].bodyRate,
+                                               _state[1].flowRate,
+                                               _state[1].bodyRate,
                                                _last_update_ms,
                                                get_pos_offset(),1);
-            AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               _state[-_nav_ind+1].flowRate,
-                                               _state[-_nav_ind+1].bodyRate,
-                                               _last_update_ms,
-                                               get_pos_offset(),2);
-
+            if (num_instances == 3) {
+                AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                                   _state[2].flowRate,
+                                                   _state[2].bodyRate,
+                                                   _last_update_ms,
+                                                   get_pos_offset(),2);
+            }
         }
-        Log_Write_Optflow(0);
-        Log_Write_Optflow(1);
     }
 }
 
@@ -301,9 +301,20 @@ void OpticalFlow::Log_Write_Optflow(uint8_t instance)
         };
         logger->WriteBlock(&pkt, sizeof(pkt));
         return;
+    } else if (instance ==1) {
+        struct log_Optflow pkt = {
+            LOG_PACKET_HEADER_INIT(LOG_OPTFLOW2_MSG),
+            time_us         : AP_HAL::micros64(),
+            surface_quality : _state[instance].surface_quality,
+            flow_x          : _state[instance].flowRate.x,
+            flow_y          : _state[instance].flowRate.y,
+            body_x          : _state[instance].bodyRate.x,
+            body_y          : _state[instance].bodyRate.y
+        };
+        logger->WriteBlock(&pkt, sizeof(pkt));
     }
     struct log_Optflow pkt = {
-        LOG_PACKET_HEADER_INIT(LOG_OPTFLOW2_MSG),
+        LOG_PACKET_HEADER_INIT(LOG_OPTFLOW3_MSG),
         time_us         : AP_HAL::micros64(),
         surface_quality : _state[instance].surface_quality,
         flow_x          : _state[instance].flowRate.x,
@@ -312,6 +323,7 @@ void OpticalFlow::Log_Write_Optflow(uint8_t instance)
         body_y          : _state[instance].bodyRate.y
     };
     logger->WriteBlock(&pkt, sizeof(pkt));
+
 }
 
 
