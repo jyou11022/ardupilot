@@ -301,7 +301,7 @@ void OpticalFlow::Log_Write_Optflow(uint8_t instance)
         };
         logger->WriteBlock(&pkt, sizeof(pkt));
         return;
-    } else if (instance ==1) {
+    } else if (instance == 1) {
         struct log_Optflow pkt = {
             LOG_PACKET_HEADER_INIT(LOG_OPTFLOW2_MSG),
             time_us         : AP_HAL::micros64(),
@@ -312,6 +312,7 @@ void OpticalFlow::Log_Write_Optflow(uint8_t instance)
             body_y          : _state[instance].bodyRate.y
         };
         logger->WriteBlock(&pkt, sizeof(pkt));
+        return;
     }
     struct log_Optflow pkt = {
         LOG_PACKET_HEADER_INIT(LOG_OPTFLOW3_MSG),
