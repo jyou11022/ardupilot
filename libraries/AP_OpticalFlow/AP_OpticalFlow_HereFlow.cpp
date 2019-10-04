@@ -69,7 +69,7 @@ AP_OpticalFlow_HereFlow* AP_OpticalFlow_HereFlow::get_uavcan_backend(AP_UAVCAN* 
     }
 
     AP::opticalflow()->backend[get_instance(node_id)] = new AP_OpticalFlow_HereFlow(*AP::opticalflow());
-    //driver = (AP_OpticalFlow_HereFlow*)AP::opticalflow()->backend[get_instance(node_id)];
+    driver = (AP_OpticalFlow_HereFlow*)AP::opticalflow()->backend[get_instance(node_id)];
     // if (driver == nullptr) {
     //     return driver;
     // }
