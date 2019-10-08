@@ -73,7 +73,8 @@ void AP_OpticalFlow_MAV::update(void)
         state.bodyRate.zero();
     }
 
-    _update_frontend(state);
+    //_update_frontend(state);
+    _update_frontend2(state,1);
 
     // reset local buffers
     flow_sum.zero();

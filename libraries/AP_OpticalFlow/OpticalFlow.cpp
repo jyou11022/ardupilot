@@ -160,7 +160,9 @@ void OpticalFlow::init(uint32_t log_bit)
             backend[i] = AP_OpticalFlow_CXOF::detect(*this);
             break;
         case OpticalFlowType::MAVLINK:
-            backend[i] = AP_OpticalFlow_MAV::detect(*this);
+            if (i == 1) {
+                backend[i] = AP_OpticalFlow_MAV::detect(*this);
+            }
             break;
         case OpticalFlowType::UAVCAN:
 #if HAL_WITH_UAVCAN
@@ -246,8 +248,10 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
     if (all_true) {
         for (uint8_t i = 0; i<num_instances; i++) {
             states_new[i] = false;
-            Log_Write_Optflow(i);
+            //Log_Write_Optflow(i);
         }
+        Log_Write_Optflow(0);
+        Log_Write_Optflow(1);
         _last_update_ms = AP_HAL::millis();
         
         if (_testing == 0) {
@@ -267,10 +271,10 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                                _state[1].bodyRate,
                                                _last_update_ms,
                                                get_pos_offset(),1);
-            if (num_instances == 3) {
+            if (num_instances >= 1) {
                 AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                                   _state[2].flowRate,
-                                                   _state[2].bodyRate,
+                                                   _state[1].flowRate,
+                                                   _state[1].bodyRate,
                                                    _last_update_ms,
                                                    get_pos_offset(),2);
             }
