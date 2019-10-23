@@ -257,20 +257,21 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                                _last_update_ms,
                                                get_pos_offset(),-1);
         } else {
+            //Put test EKF data input here
             AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               _state[0].flowRate,
+                                               Vector2f((-_state[1].flowRate.y-_state[2].flowRate.y)*.6,_state[0].flowRate.y),
                                                _state[0].bodyRate,
                                                _last_update_ms,
                                                get_pos_offset(),0);
             AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               _state[1].flowRate,
-                                               _state[1].bodyRate,
+                                               _state[0].flowRate,
+                                               _state[0].bodyRate,
                                                _last_update_ms,
                                                get_pos_offset(),1);
             if (num_instances == 3) {
                 AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                                   _state[2].flowRate,
-                                                   _state[2].bodyRate,
+                                                   _state[0].flowRate,
+                                                   _state[0].bodyRate,
                                                    _last_update_ms,
                                                    get_pos_offset(),2);
             }
