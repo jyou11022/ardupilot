@@ -1,7 +1,7 @@
 #pragma once
 #include "OpticalFlow_backend.h"
 
-#define HEREFLOW_INIT_NODE_ID 40
+#define HEREFLOW_INIT_NODE_ID 39
 
 #if HAL_WITH_UAVCAN
 
