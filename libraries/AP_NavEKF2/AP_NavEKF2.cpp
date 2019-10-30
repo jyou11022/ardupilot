@@ -1216,12 +1216,10 @@ bool NavEKF2::use_compass(void) const
 void NavEKF2::writeOptFlowMeas(const uint8_t rawFlowQuality, const Vector2f &rawFlowRates, const Vector2f &rawGyroRates, const uint32_t msecFlowMeas, const Vector3f &posOffset, const int8_t inst)
 {
     if (core) { 
-        if (inst == -1) {
-            for (uint8_t i=0; i<num_cores; i++) {
+        for (uint8_t i=0; i<num_cores; i++) {
+            if (inst == -1 || inst == i) {
                 core[i].writeOptFlowMeas(rawFlowQuality, rawFlowRates, rawGyroRates, msecFlowMeas, posOffset);
             }
-        } else {
-            core[inst].writeOptFlowMeas(rawFlowQuality, rawFlowRates, rawGyroRates, msecFlowMeas, posOffset);
         }
     }
 }
