@@ -459,11 +459,19 @@ void AP_RangeFinder_LightWareI2C::legacy_timer(void)
 
 void AP_RangeFinder_LightWareI2C::sf20_timer(void)
 {
+    static uint8_t counter = 0;
+
     if (sf20_get_reading(state.distance_cm)) {
         // update range_valid state based on distance measured
         update_status();
     } else {
-        set_status(RangeFinder::RangeFinder_NoData);
+        counter++;
+        if (counter > 20) {
+            counter = 0;
+            set_status(RangeFinder::RangeFinder_NoData);
+        } else {
+            update_status();
+        }
     }
 }
 
