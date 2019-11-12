@@ -261,11 +261,14 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                                get_pos_offset(),-1);
         } else {
             //Remove Yaw
-            //yaw_fused = (_state[0].flowRate.y+_state[1].flowRate.y+_state[2].flowRate.y)/3.0;
+            div_fused = (_state[0].flowRate.x+_state[1].flowRate.x+_state[2].flowRate.x)/3.0;
             yaw_fused = AP::ahrs().get_gyro().z/1.2;
             _state[0].flowRate.y -= yaw_fused;
             _state[1].flowRate.y -= yaw_fused;
             _state[2].flowRate.y -= yaw_fused;
+            _state[0].flowRate.x -= div_fused;
+            _state[1].flowRate.x -= div_fused;
+            _state[2].flowRate.x -= div_fused;
 
             //Fusion
             _state[0].flowRate = Vector2f(_state[0].flowRate*Vector2f(s60,s30),_state[0].flowRate*Vector2f(-s30,s60))*1.2;
