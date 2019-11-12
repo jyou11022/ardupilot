@@ -24,6 +24,9 @@ extern const AP_HAL::HAL& hal;
  #endif
 #endif
 
+static const float s30 = sinf(radians(30.0)); // = 0.5
+static const float s60 = sinf(radians(60.0)); // = 0.8660254
+
 const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: Optical flow sensor type
@@ -257,24 +260,47 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                                _last_update_ms,
                                                get_pos_offset(),-1);
         } else {
-            //Put test EKF data input here
-            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+            //Remove Yaw
+            //yaw_fused = (_state[0].flowRate.y+_state[1].flowRate.y+_state[2].flowRate.y)/3.0;
+            yaw_fused = AP::ahrs().get_gyro().z/1.2;
+            _state[0].flowRate.y -= yaw_fused;
+            _state[1].flowRate.y -= yaw_fused;
+            _state[2].flowRate.y -= yaw_fused;
+
+            //Fusion
+            _state[0].flowRate = Vector2f(_state[0].flowRate*Vector2f(s60,s30),_state[0].flowRate*Vector2f(-s30,s60))*1.2;
+            _state[1].flowRate = Vector2f(_state[1].flowRate*Vector2f(-s60,s30),_state[1].flowRate*Vector2f(-s30,-s60))*1.2;
+            _state[2].flowRate = Vector2f(-_state[2].flowRate.y,_state[2].flowRate.x)*1.2;
+            //_state[2].flowRate = Vector2f(yaw_fused, AP::ahrs().get_gyro().z);
+/*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[2].flowRate,
+                                               _state[2].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),0);*/
+            
+            //Put custom EKF data input here
+/*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
                                                Vector2f((_state[1].flowRate.y+_state[2].flowRate.y)*.6,_state[0].flowRate.y),
                                                _state[0].bodyRate,
                                                _last_update_ms,
-                                               get_pos_offset(),0);
+                                               get_pos_offset(),0);*/
             AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               _state[0].flowRate,
-                                               _state[0].bodyRate,
+                                               (_state[0].flowRate+_state[1].flowRate+_state[2].flowRate)/3.0,
+                                               _state[3].bodyRate,
+                                               _last_update_ms,
+                                               get_pos_offset(),-1);
+/*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[1].flowRate,
+                                               _state[3].bodyRate,
                                                _last_update_ms,
                                                get_pos_offset(),1);
-            if (num_instances == 3) {
+            if (num_instances >= 3) {
                 AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                                   _state[0].flowRate,
-                                                   _state[0].bodyRate,
+                                                   _state[2].flowRate,
+                                                   _state[3].bodyRate,
                                                    _last_update_ms,
                                                    get_pos_offset(),2);
-            }
+            }*/
         }
     }
 }
