@@ -123,6 +123,11 @@ private:
     AP_Int8  _nav_ind;              // Instance of EKF
     AP_Int8 _testing;               // Testing Indicator (0:disabled, 1:enabled)
 
+    //For fusion
+    Vector2f flow_fused;
+    Vector2f body_fused;
+    float yaw_fused;
+    
     // method called by backend to update frontend state:
     void update_state(const OpticalFlow_state &state);
     void update_state2(const OpticalFlow_state &state, uint8_t instance);
