@@ -125,8 +125,9 @@ private:
 
     //For fusion
     Vector2f flow_fused;
-    Vector2f body_fused;
+    Vector3f body_gyro;
     float yaw_fused;
+    float div_fused;
     
     // method called by backend to update frontend state:
     void update_state(const OpticalFlow_state &state);

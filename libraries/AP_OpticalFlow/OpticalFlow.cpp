@@ -247,6 +247,22 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
         }
     }
     if (all_true) {
+        //Remove Yaw`
+        body_gyro = AP::ahrs().get_gyro(); 
+        div_fused = (_state[0].flowRate.x+_state[1].flowRate.x+_state[2].flowRate.x)/3.0;
+        yaw_fused = body_gyro.z/1.2;
+        _state[0].flowRate.y += yaw_fused;
+        _state[1].flowRate.y += yaw_fused;
+        _state[2].flowRate.y += yaw_fused;
+        _state[0].flowRate.x -= div_fused;
+        _state[1].flowRate.x -= div_fused;
+        _state[2].flowRate.x -= div_fused;
+
+        //Fusion - Apply axis transformation
+        _state[0].flowRate = Vector2f(_state[0].flowRate*Vector2f(s60,s30),_state[0].flowRate*Vector2f(-s30,s60))*1.2;
+        _state[1].flowRate = Vector2f(_state[1].flowRate*Vector2f(-s60,s30),_state[1].flowRate*Vector2f(-s30,-s60))*1.2;
+        _state[2].flowRate = Vector2f(-_state[2].flowRate.y,_state[2].flowRate.x)*1.2;
+
         for (uint8_t i = 0; i<num_instances; i++) {
             states_new[i] = false;
             Log_Write_Optflow(i);
@@ -256,21 +272,24 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
         if (_testing == 0) {
             AP::ahrs_navekf().writeOptFlowMeas(quality(),
                                                _state[_nav_ind].flowRate,
-                                               _state[_nav_ind].bodyRate,
+                                               Vector2f(body_gyro.x, body_gyro.y),
                                                _last_update_ms,
                                                get_pos_offset(),-1);
         } else {
-            //Remove Yaw
-            //yaw_fused = (_state[0].flowRate.y+_state[1].flowRate.y+_state[2].flowRate.y)/3.0;
+/*            //Remove Yaw
+            div_fused = (_state[0].flowRate.x+_state[1].flowRate.x+_state[2].flowRate.x)/3.0;
             yaw_fused = AP::ahrs().get_gyro().z/1.2;
             _state[0].flowRate.y -= yaw_fused;
             _state[1].flowRate.y -= yaw_fused;
             _state[2].flowRate.y -= yaw_fused;
+            _state[0].flowRate.x -= div_fused;
+            _state[1].flowRate.x -= div_fused;
+            _state[2].flowRate.x -= div_fused;
 
             //Fusion
             _state[0].flowRate = Vector2f(_state[0].flowRate*Vector2f(s60,s30),_state[0].flowRate*Vector2f(-s30,s60))*1.2;
             _state[1].flowRate = Vector2f(_state[1].flowRate*Vector2f(-s60,s30),_state[1].flowRate*Vector2f(-s30,-s60))*1.2;
-            _state[2].flowRate = Vector2f(-_state[2].flowRate.y,_state[2].flowRate.x)*1.2;
+            _state[2].flowRate = Vector2f(-_state[2].flowRate.y,_state[2].flowRate.x)*1.2;*/
             //_state[2].flowRate = Vector2f(yaw_fused, AP::ahrs().get_gyro().z);
 /*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
                                                _state[2].flowRate,
@@ -286,7 +305,7 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                                get_pos_offset(),0);*/
             AP::ahrs_navekf().writeOptFlowMeas(quality(),
                                                (_state[0].flowRate+_state[1].flowRate+_state[2].flowRate)/3.0,
-                                               _state[3].bodyRate,
+                                               Vector2f(body_gyro.x, body_gyro.y),
                                                _last_update_ms,
                                                get_pos_offset(),-1);
 /*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
