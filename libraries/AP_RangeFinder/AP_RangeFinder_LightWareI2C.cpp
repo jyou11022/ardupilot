@@ -466,7 +466,7 @@ void AP_RangeFinder_LightWareI2C::sf20_timer(void)
         update_status();
     } else {
         counter++;
-        if (counter > 20) {
+        if (counter > 30) {
             counter = 0;
             set_status(RangeFinder::RangeFinder_NoData);
         } else {
