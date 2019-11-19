@@ -44,12 +44,13 @@ static const size_t lx20_max_expected_stream_reply_len_bytes = 14;
 #define STREAM3_VAL stream_the_raw_distance_to_the_first_return
 #define STREAM4_VAL stream_the_signal_strength_first_return
 #define STREAM5_VAL stream_the_level_of_background_noise
+#define STREAM6_VAL stream_the_median_distance_to_the_first_return
 static const char *parse_stream_id[NUM_SF20_DATA_STREAMS] = { // List of stream identifier strings. Must match init_stream_id[].
-    STREAM1_VAL ":"
+    STREAM6_VAL ":"
 };
 
 static const char *init_stream_id[NUM_SF20_DATA_STREAMS] = {// List of stream initialization strings. Must match parse_stream_id[].
-    "$1" STREAM1_VAL "\r\n"
+    "$1" STREAM6_VAL "\r\n"
 };
 
 static const uint8_t streamSequence[] = { 0 }; // List of 0 based stream Ids that determine the LiDAR values collected.
