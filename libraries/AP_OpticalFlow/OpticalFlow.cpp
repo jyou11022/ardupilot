@@ -24,9 +24,6 @@ extern const AP_HAL::HAL& hal;
  #endif
 #endif
 
-static const float s30 = sinf(radians(30.0)); // = 0.5
-static const float s60 = sinf(radians(60.0)); // = 0.8660254
-
 const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: Optical flow sensor type
@@ -281,7 +278,19 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
                                                (_state[1].flowRate+_state[2].flowRate)/2.0,
                                                Vector2f(body_gyro.x, body_gyro.y),
                                                _last_update_ms,
-                                               get_pos_offset(),-1);
+                                               get_pos_offset(),0);
+
+            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[1].flowRate,
+                                               Vector2f(body_gyro.x, body_gyro.y),
+                                               _last_update_ms,
+                                               get_pos_offset(),1);
+
+            AP::ahrs_navekf().writeOptFlowMeas(quality(),
+                                               _state[2].flowRate,
+                                               Vector2f(body_gyro.x, body_gyro.y),
+                                               _last_update_ms,
+                                               get_pos_offset(),2);
         }
     }
 }
