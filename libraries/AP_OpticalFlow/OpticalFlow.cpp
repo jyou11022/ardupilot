@@ -252,7 +252,6 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
         div_fused = (_state[0].flowRate.x+_state[1].flowRate.x+_state[2].flowRate.x)/3.0;
         yaw_fused = body_gyro.z/1.2;
 
-
         _state[1].flowRate.x = -_state[1].flowRate.x;
         _state[1].flowRate.y = -_state[1].flowRate.y;
 
