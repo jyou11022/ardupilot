@@ -73,13 +73,13 @@ public:
     void handle_msg(const mavlink_message_t &msg);
 
     // quality - returns the surface quality as a measure from 0 ~ 255
-    uint8_t quality() const { return _state[0].surface_quality; }
+    uint8_t quality() const { return _state_fused.surface_quality; }
 
     // raw - returns the raw movement from the sensor
-    const Vector2f& flowRate() const { return _state[0].flowRate; }
+    const Vector2f& flowRate() const { return _state_fused.flowRate; }
 
     // velocity - returns the velocity in m/s
-    const Vector2f& bodyRate() const { return _state[0].bodyRate; }
+    const Vector2f& bodyRate() const { return _state_fused.bodyRate; }
 
     // last_update() - returns system time of last sensor update
     uint32_t last_update() const { return _last_update_ms; }
@@ -123,18 +123,21 @@ private:
     AP_Int8  _nav_ind;              // Instance of EKF
     AP_Int8 _testing;               // Testing Indicator (0:disabled, 1:enabled)
 
-    //For fusion
-    Vector2f flow_fused;
-    Vector3f body_gyro;
-    float yaw_fused;
-    float div_fused;
-    
+
     // method called by backend to update frontend state:
     void update_state(const OpticalFlow_state &state);
     void update_state2(const OpticalFlow_state &state, uint8_t instance);
 
     // state filled in by backend
     struct OpticalFlow_state _state[OPTICALFLOW_MAX_INSTANCES];
+
+    // For fusion
+    struct OpticalFlow_state _state_fused;
+    Vector2f flow_fused;
+    Vector3f body_gyro;
+    float yaw_fused;
+    /*float div_fused;*/
+    uint8_t inc;
 
     uint32_t _last_update_ms;        // millis() time of last update
     uint8_t num_instances;           // number of sensors

@@ -235,7 +235,6 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
 
     _state[instance] = state;
     states_new[instance] = true;
-
     all_true = true;
 
     for (uint8_t i = 0; i<num_instances; i++) {
@@ -246,84 +245,72 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
             break;
         }
     }
+
     if (all_true) {
-        //Remove Yaw`
-        body_gyro = AP::ahrs().get_gyro(); 
-        div_fused = (_state[0].flowRate.x+_state[1].flowRate.x+_state[2].flowRate.x)/3.0;
-        yaw_fused = body_gyro.z/1.2;
 
         _state[1].flowRate.x = -_state[1].flowRate.x;
         _state[1].flowRate.y = -_state[1].flowRate.y;
 
+        //Remove Yaw`
+        body_gyro = AP::ahrs().get_gyro(); 
+//        div_fused = (_state[0].flowRate.x+_state[1].flowRate.x+_state[2].flowRate.x)/3.0;
+        yaw_fused = body_gyro.z/1.2;
+
         _state[0].flowRate.y += yaw_fused;
         _state[1].flowRate.y += yaw_fused;
         _state[2].flowRate.y += yaw_fused;
-        _state[0].flowRate.x -= div_fused;
-        _state[1].flowRate.x -= div_fused;
-        _state[2].flowRate.x -= div_fused;
+//        _state[0].flowRate.x -= div_fused;
+//        _state[1].flowRate.x -= div_fused;
+//        _state[2].flowRate.x -= div_fused;
 
         //Fusion - Apply axis transformation
         _state[0].flowRate = Vector2f(_state[0].flowRate*Vector2f(s60,s30),_state[0].flowRate*Vector2f(-s30,s60))*1.2;
         _state[1].flowRate = Vector2f(_state[1].flowRate*Vector2f(-s60,s30),_state[1].flowRate*Vector2f(-s30,-s60))*1.2;
         _state[2].flowRate = Vector2f(-_state[2].flowRate.y,_state[2].flowRate.x)*1.2;
 
+        inc = num_instances;
+
         for (uint8_t i = 0; i<num_instances; i++) {
             states_new[i] = false;
             Log_Write_Optflow(i);
+
+            if (_state[i].surface_quality < 40) {
+                _state[i].flowRate.x = 0;
+                _state[i].flowRate.y = 0;
+                _state[i].surface_quality = 0;
+                inc -= 1;
+            }
         }
+        inc = MAX(inc,1);
+
+        //Update Fused Data
+        _state_fused.flowRate = (_state[0].flowRate+_state[1].flowRate+_state[2].flowRate)/inc;
+        _state_fused.bodyRate = Vector2f(body_gyro.x, body_gyro.y);
+        _state_fused.surface_quality = (_state[0].surface_quality+ _state[1].surface_quality+ _state[2].surface_quality)/inc;
+
+        /*static uint8_t counter = 0;
+        counter++;
+        if (counter > 20) {
+            counter = 0;
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Quality: %u", _state_fused.surface_quality);
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Flow: %f", _state_fused.flowRate.x);
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Num: %u", inc);
+        }*/
+
         _last_update_ms = AP_HAL::millis();
         
         if (_testing == 0) {
             AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               _state[_nav_ind].flowRate,
-                                               Vector2f(body_gyro.x, body_gyro.y),
+                                               flowRate(),
+                                               bodyRate(),
                                                _last_update_ms,
                                                get_pos_offset(),-1);
         } else {
-/*            //Remove Yaw
-            div_fused = (_state[0].flowRate.x+_state[1].flowRate.x+_state[2].flowRate.x)/3.0;
-            yaw_fused = AP::ahrs().get_gyro().z/1.2;
-            _state[0].flowRate.y -= yaw_fused;
-            _state[1].flowRate.y -= yaw_fused;
-            _state[2].flowRate.y -= yaw_fused;
-            _state[0].flowRate.x -= div_fused;
-            _state[1].flowRate.x -= div_fused;
-            _state[2].flowRate.x -= div_fused;
-
-            //Fusion
-            _state[0].flowRate = Vector2f(_state[0].flowRate*Vector2f(s60,s30),_state[0].flowRate*Vector2f(-s30,s60))*1.2;
-            _state[1].flowRate = Vector2f(_state[1].flowRate*Vector2f(-s60,s30),_state[1].flowRate*Vector2f(-s30,-s60))*1.2;
-            _state[2].flowRate = Vector2f(-_state[2].flowRate.y,_state[2].flowRate.x)*1.2;*/
-            //_state[2].flowRate = Vector2f(yaw_fused, AP::ahrs().get_gyro().z);
-/*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               _state[2].flowRate,
-                                               _state[2].bodyRate,
-                                               _last_update_ms,
-                                               get_pos_offset(),0);*/
-            
-            //Put custom EKF data input here
-/*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               Vector2f((_state[1].flowRate.y+_state[2].flowRate.y)*.6,_state[0].flowRate.y),
-                                               _state[0].bodyRate,
-                                               _last_update_ms,
-                                               get_pos_offset(),0);*/
             AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               (_state[0].flowRate+_state[1].flowRate+_state[2].flowRate)/3.0,
-                                               Vector2f(body_gyro.x, body_gyro.y),
+                                               _state[_nav_ind].flowRate,
+                                               bodyRate(),
                                                _last_update_ms,
                                                get_pos_offset(),-1);
-/*            AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                               _state[1].flowRate,
-                                               _state[3].bodyRate,
-                                               _last_update_ms,
-                                               get_pos_offset(),1);
-            if (num_instances >= 3) {
-                AP::ahrs_navekf().writeOptFlowMeas(quality(),
-                                                   _state[2].flowRate,
-                                                   _state[3].bodyRate,
-                                                   _last_update_ms,
-                                                   get_pos_offset(),2);
-            }*/
         }
     }
 }
