@@ -127,7 +127,7 @@ bool AP_ToneAlarm::init()
     }
 #endif
 
-    play_tone(AP_NOTIFY_TONE_STARTUP);
+    //play_tone(AP_NOTIFY_TONE_STARTUP);
     return true;
 }
 

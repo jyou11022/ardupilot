@@ -246,6 +246,15 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
         }
     }
 
+/*    static uint8_t counter = 0;
+    counter++;
+    if (counter > 50) {
+        counter = 0;
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "Quality: %u", _state_fused.surface_quality);
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "Flow: %f", _state_fused.flowRate.x);
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "Num: %u", inc);
+    }*/
+
     if (all_true) {
 
         _state[1].flowRate.x = -_state[1].flowRate.x;
@@ -288,14 +297,6 @@ void OpticalFlow::update_state2(const OpticalFlow_state &state, uint8_t instance
         _state_fused.bodyRate = Vector2f(body_gyro.x, body_gyro.y);
         _state_fused.surface_quality = (_state[0].surface_quality+ _state[1].surface_quality+ _state[2].surface_quality)/inc;
 
-        /*static uint8_t counter = 0;
-        counter++;
-        if (counter > 20) {
-            counter = 0;
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "Quality: %u", _state_fused.surface_quality);
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "Flow: %f", _state_fused.flowRate.x);
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "Num: %u", inc);
-        }*/
 
         _last_update_ms = AP_HAL::millis();
         
